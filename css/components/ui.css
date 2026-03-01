@@ -1,0 +1,74 @@
+/* Splash Screen */
+.splash-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #FF59C7; z-index: 9999; display: flex; align-items: center; justify-content: center; transition: opacity 0.8s ease-out, visibility 0.8s; }
+.splash-screen.hidden { opacity: 0; visibility: hidden; }
+.splash-screen img { max-width: 110%; max-height: 110%; width: 600px; }
+
+/* Pop-up Notificação Topo */
+.notificacao-carrinho { position: fixed; top: 20px; left: 50%; transform: translate(-50%, -150%); z-index: 10001; background-color: #a33e6b; color: #ffffff; padding: 15px 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); font-weight: bold; text-align: center; pointer-events: none; opacity: 0; transition: transform 0.4s ease-out, opacity 0.4s ease-out; }
+.notificacao-carrinho.visible { opacity: 1; transform: translate(-50%, 0); }
+
+/* Pop-up Aviso Promo Black Friday */
+/* ================================================= */
+/* POP-UP DE AVISO PROMOCIONAL (FRETE)               */
+/* ================================================= */
+
+.aviso-promo-bf {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translate(-50%, -200%); /* Começa escondido lá em cima */
+    z-index: 12000; /* Acima de tudo */
+    
+    /* MUDANÇA: Cores da Marca (Rosa com Borda Branca) */
+    background-color: #F86DB3; 
+    color: #ffffff; 
+    border: 2px solid #ffffff; 
+    
+    padding: 20px 25px;
+    border-radius: 10px;
+    
+    /* Sombra suave rosa escuro */
+    box-shadow: 0 5px 25px rgba(163, 62, 107, 0.4);
+    
+    font-weight: bold;
+    text-align: center;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    
+    width: 85%;
+    max-width: 400px;
+    
+    /* Animação de descida elástica */
+    transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+    
+    pointer-events: none;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+/* Classe que faz ele descer e aparecer */
+.aviso-promo-bf.visivel {
+    transform: translate(-50%, 0);
+}
+
+/* Aviso Loja Fechada */
+.aviso-loja-fechada { display: none; background-color: #FADADD; border: 2px solid #F8B4CB; color: #a33e6b; text-align: center; padding: 15px; border-radius: 10px; margin-bottom: 25px; }
+.aviso-loja-fechada p { margin: 5px 0; }
+
+/* Agendamento */
+.scheduling-notice { background-color: #fffbe6; border: 1px solid #ffe58f; color: #b38200; text-align: center; padding: 15px; border-radius: 10px; margin-bottom: 5px; margin-top: 25px; }
+.scheduling-notice p { margin: 0; font-weight: bold; }
+.scheduling-info-box { background-color: #fdf6f8; padding: 15px; border-radius: 8px; border: 2px solid #FADADD; margin-bottom: 20px; font-size: 0.95em; color: #a33e6b; line-height: 1.5; }
+.scheduling-info-box p { margin: 5px 0; }
+
+/* Pop-up PIX */
+.pix-popup-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); justify-content: center; align-items: center; z-index: 2000; }
+.pix-popup-content { background-color: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3); text-align: center; position: relative; width: 90%; max-width: 320px; }
+.pix-popup-content h3 { color: #a33e6b; margin-top: 0; margin-bottom: 10px; font-size: 1.4em; }
+.pix-popup-content p { margin: 0 0 15px 0; color: #666; }
+.pix-qrcode { max-width: 100%; height: auto; border: 1px solid #eee; border-radius: 5px; margin-bottom: 15px; }
+.pix-key-container { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; background-color: #f9f9f9; }
+#pix-key { font-size: 1em; font-weight: bold; color: #333; word-break: break-all; text-align: left; }
+.pix-key-container button { background-color: #F86DB3; color: white; border: none; border-radius: 5px; padding: 8px 15px; cursor: pointer; font-size: 0.9em; font-weight: normal; flex-shrink: 0; }
+.pix-key-container button:hover { background-color: #e15ca0; }
+.close-button { position: absolute; top: 10px; right: 15px; font-size: 28px; font-weight: normal; color: #aaa; cursor: pointer; line-height: 1; }
+.close-button:hover { color: #333; }

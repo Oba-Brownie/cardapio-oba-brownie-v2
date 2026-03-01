@@ -1,0 +1,23 @@
+:root { 
+    --primary: #F86DB3; 
+    --dark: #a33e6b; 
+    --bg: #fdf6f8; 
+    --white: #ffffff;
+    --success: #00c853;
+    --danger: #ff4444;
+}
+
+body { 
+    font-family: 'Segoe UI', sans-serif; 
+    background: var(--bg); 
+    margin: 0; 
+    display: flex; 
+    height: 100vh; 
+    overflow: hidden; 
+}
+
+/* Scrollbar Bonitinha */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #f1f1f1; }
+::-webkit-scrollbar-thumb { background: #F8B4CB; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--primary); }

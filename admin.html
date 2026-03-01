@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oba Gestão - Painel</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <link rel="stylesheet" href="css/admin.css">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+</head>
+<body>
+
+    <div id="login-screen" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fdf2f8; z-index: 9999;">
+        <div style="background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 90%; max-width: 350px; text-align: center;">
+            <h2 style="color: var(--primary); margin-bottom: 20px;">🔒 Acesso Restrito</h2>
+            
+            <input type="email" id="login-email" placeholder="E-mail" style="width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; outline: none; box-sizing: border-box;">
+            
+            <div style="position: relative; width: 100%; margin-bottom: 15px;">
+                <input type="password" id="login-password" placeholder="Senha" style="width: 100%; padding: 12px; padding-right: 40px; border: 1px solid #ccc; border-radius: 5px; outline: none; box-sizing: border-box;">
+                <button type="button" onclick="togglePassword()" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; color: #888; font-size: 1.1em;">
+                    <i class="fas fa-eye" id="eye-icon"></i>
+                </button>
+            </div>
+
+            <button onclick="fazerLogin()" id="btn-login" style="width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 1.1em;">ENTRAR</button>
+            <p id="login-msg" style="color: red; font-size: 0.9em; margin-top: 10px;"></p>
+        </div>
+    </div>
+
+    <div id="admin-content" style="display: none; width: 100%; height: 100vh;">
+        
+        <aside id="sidebar">
+            <div class="aside-header">
+                <h1>
+                    <i class="fas fa-cookie-bite" style="color:var(--primary)"></i> 
+                    <span>Oba Gestão</span>
+                </h1>
+                <button class="btn-toggle" onclick="toggleMenu()" title="Recolher Menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+            
+            <div class="menu-item active" onclick="nav('monitor')" title="Pedidos">
+                <i class="fas fa-bell"></i> <span>Pedidos (Hoje)</span>
+            </div>
+            
+            <div class="menu-item" onclick="nav('historico')" title="Histórico">
+                <i class="fas fa-history"></i> <span>Histórico</span>
+            </div>
+
+            <div class="menu-item" onclick="nav('relatorios')" title="Relatórios">
+                <i class="fas fa-chart-line"></i> <span>Relatórios</span>
+            </div>
+            
+            <div class="menu-item" onclick="nav('produtos')" title="Estoque">
+                <i class="fas fa-boxes"></i> <span>Estoque</span>
+            </div>
+            <div class="menu-item" onclick="nav('cupons')" title="Cupons">
+                <i class="fas fa-ticket-alt"></i> <span>Cupons de Desconto</span>
+            </div>
+            <div class="menu-item" onclick="nav('config')" title="Configurações">
+                <i class="fas fa-cog"></i> <span>Configurações</span>
+            </div>
+            
+            <div class="menu-item" onclick="nav('novo')" title="Novo Produto">
+                <i class="fas fa-plus-circle"></i> <span>Novo Produto</span>
+            </div>
+
+            <div class="menu-item" onclick="fazerLogout()" title="Sair do Sistema" style="color: #dc3545; margin-top: auto;">
+                <i class="fas fa-sign-out-alt"></i> <span>Sair do Sistema</span>
+            </div>
+        </aside>
+
+        <main>
+            <header class="top-bar">
+                <h2 id="page-title">Painel de Controle</h2> 
+                <button id="btn-status-toggle" onclick="toggleLojaStatus()" class="btn-status-loading">
+                    <i class="fas fa-spinner fa-spin"></i> Carregando...
+                </button>
+            </header>
+
+            <section id="monitor" class="section active">
+                <h2 style="color: var(--dark); border-bottom: 2px solid #eee; padding-bottom:10px; display:flex; justify-content:space-between; align-items:center">
+                    Pedidos de Hoje
+                    <button onclick="carregarPedidosDoBanco()" style="font-size:0.6em; cursor:pointer; background:none; border:none; color:var(--primary)">🔄 Atualizar</button>
+                </h2>
+                <div class="kanban-board">
+                    <div class="kanban-col">
+                        <div class="col-header header-novos">
+                            <h3>🔔 Novos</h3>
+                            <span id="count-novos" class="count-badge">0</span>
+                        </div>
+                        <div id="lista-novos" class="col-body"></div>
+                    </div>
+
+                    <div class="kanban-col">
+                        <div class="col-header header-entrega">
+                            <h3>🛵 Em Preparação/ Entrega</h3>
+                            <span id="count-entrega" class="count-badge">0</span>
+                        </div>
+                        <div id="lista-entrega" class="col-body"></div>
+                    </div>
+
+                    <div class="kanban-col">
+                        <div class="col-header header-concluidos">
+                            <h3>✅ Entregues</h3>
+                            <span id="count-concluidos" class="count-badge">0</span>
+                        </div>
+                        <div id="lista-concluidos" class="col-body"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="historico" class="section">
+                <h2 style="color: var(--dark); border-bottom: 2px solid #eee; padding-bottom:10px; display:flex; justify-content:space-between; align-items:center">
+                    Histórico de Pedidos (Anteriores)
+                    <button onclick="carregarHistorico()" style="font-size:0.6em; cursor:pointer; background:none; border:none; color:var(--primary)">🔄 Atualizar</button>
+                </h2>
+                
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" oninput="filtrarHistorico(this.value)" placeholder="Buscar por cliente ou data...">
+                </div>
+
+                <div id="tabela-historico">Carregando...</div>
+            </section>
+
+            <section id="produtos" class="section">
+                <h2 style="color: var(--dark); border-bottom: 2px solid #eee; padding-bottom:10px; display:flex; justify-content:space-between; align-items:center">
+                    Gerenciar Estoque
+                    <button onclick="carregarProdutos()" style="font-size:0.6em; cursor:pointer; background:none; border:none; color:var(--primary)">🔄 Atualizar</button>
+                </h2>
+
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" oninput="filtrarProdutos(this.value)" placeholder="Buscar por nome ou categoria...">
+                </div>
+
+                <div id="lista-produtos">Carregando...</div>
+            </section>
+            <section id="relatorios" class="section">
+                <h2 style="color: var(--dark); border-bottom: 2px solid #eee; padding-bottom:10px;">
+                    Relatório de Vendas
+                </h2>
+                
+                <div class="form-card" style="margin-bottom: 20px;">
+                    <div style="display:flex; gap:15px; flex-wrap: wrap; align-items: flex-end;">
+                        <div style="flex:1; min-width: 150px;">
+                            <label>Data Inicial:</label>
+                            <input type="date" id="rel-data-inicio" required>
+                        </div>
+                        <div style="flex:1; min-width: 150px;">
+                            <label>Data Final:</label>
+                            <input type="date" id="rel-data-fim" required>
+                        </div>
+                        <div style="flex:1; min-width: 150px;">
+                            <button onclick="gerarRelatorio()" class="btn-save" id="btn-gerar-relatorio" style="margin: 0; padding: 12px;">GERAR RELATÓRIO</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="resultado-relatorio" style="display: none;">
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px;">
+                        <div style="flex: 1; background: #e8f5e9; border: 1px solid #c8e6c9; padding: 20px; border-radius: 8px; text-align: center; min-width: 200px;">
+                            <h3 style="margin: 0; color: #2e7d32; font-size: 1.1em;">Faturamento Total</h3>
+                            <p id="rel-faturamento" style="font-size: 2em; font-weight: bold; color: #1b5e20; margin: 10px 0 0 0;">R$ 0,00</p>
+                        </div>
+                        <div style="flex: 1; background: #e3f2fd; border: 1px solid #bbdefb; padding: 20px; border-radius: 8px; text-align: center; min-width: 200px;">
+                            <h3 style="margin: 0; color: #1565c0; font-size: 1.1em;">Total de Pedidos</h3>
+                            <p id="rel-qtd-pedidos" style="font-size: 2em; font-weight: bold; color: #0d47a1; margin: 10px 0 0 0;">0</p>
+                        </div>
+                    </div>
+
+                    <div class="form-card">
+                        <h3 style="margin-top: 0; color: var(--dark); border-bottom: 1px solid #eee; padding-bottom: 10px;">🏆 Produtos Mais Vendidos</h3>
+                        <div id="rel-produtos-lista" style="margin-top: 15px;">
+                            </div>
+                    </div>
+                </div>
+            </section>
+            <section id="novo" class="section">
+                <div class="form-card">
+                    <h2 id="titulo-form" style="color: var(--dark); text-align:center; margin-top:0">Cadastrar Produto</h2>
+                    
+                    <form id="form-produto" onsubmit="salvarProduto(event)">
+                        <label>Nome do Produto:</label> 
+                        <input id="p-nome" required placeholder="Ex: Brownie com Nutella">
+                        
+                        <div style="display:flex; gap:15px">
+                            <div style="flex:1">
+                                <label>Preço (R$):</label> 
+                                <input type="number" step="0.01" id="p-preco" required placeholder="0.00">
+                            </div>
+                            <div style="flex:1">
+                                <label>Estoque:</label> 
+                                <input type="number" id="p-estoque" required placeholder="0">
+                            </div>
+                            <div style="flex:1">
+                                <label>Ordem:</label> 
+                                <input type="number" id="p-ordem" placeholder="Ex: 1">
+                            </div>
+                        </div>
+
+                        <label>Categoria:</label>
+                        <select id="p-categoria" required>
+                            <option value="">Carregando categorias...</option>
+                        </select>
+
+                        <label>Foto:</label>
+                        <input type="file" id="p-foto" accept="image/*" onchange="mostrarPreview(this)">
+                        
+                        <div class="preview-container">
+                            <img id="preview-img" src="" alt="Prévia">
+                        </div>
+                        
+                        <label>Descrição:</label> 
+                        <textarea id="p-desc" rows="3" placeholder="Ingredientes, detalhes..."></textarea>
+                        
+                        <div style="margin-bottom:20px; display: flex; gap: 20px;">
+                            <label style="display:flex; align-items:center; cursor:pointer; background: #e8f5e9; padding: 10px; border-radius: 5px; border: 1px solid #c8e6c9;">
+                                <input type="checkbox" id="p-ativo" checked style="width:auto; margin:0 10px 0 0"> 
+                                Produto Ativo?
+                            </label>
+
+                            <label style="display:flex; align-items:center; cursor:pointer; background: #fff8e1; padding: 10px; border-radius: 5px; border: 1px solid #ffecb3;">
+                                <input type="checkbox" id="p-destaque" style="width:auto; margin:0 10px 0 0"> 
+                                ⭐ Colocar em Destaque?
+                            </label>
+                        </div>
+
+                        <button type="submit" id="btn-salvar" class="btn-save">SALVAR PRODUTO</button>
+                        <button type="button" id="btn-cancelar" class="btn-cancel" onclick="cancelarEdicao()">CANCELAR EDIÇÃO</button>
+                    </form>
+                </div>
+            </section>
+            
+            <section id="cupons" class="section">
+                <h2 style="color: var(--dark); border-bottom: 2px solid #eee; padding-bottom:10px">
+                    Gerenciar Cupons
+                </h2>
+                
+                <div class="form-card" style="margin-bottom: 20px; max-width: 100%;">
+                    <form onsubmit="salvarCupom(event)">
+                        <div style="display:flex; gap:15px; flex-wrap: wrap;">
+                            <div style="flex:2; min-width: 200px;">
+                                <label>Código do Cupom:</label>
+                                <input type="text" id="c-codigo" required placeholder="EX: BROWNIEDELICIA" style="text-transform: uppercase;">
+                            </div>
+                            <div style="flex:1; min-width: 100px;">
+                                <label>Desconto (%):</label>
+                                <input type="number" id="c-desconto" required placeholder="10" min="1" max="100">
+                            </div>
+                            <div style="flex:1; min-width: 120px;">
+                                <label>Mínimo (R$):</label>
+                                <input type="number" step="0.01" id="c-minimo" required placeholder="0.00" value="0">
+                            </div>
+                            <div style="flex:1; min-width: 100px;">
+                                <label>Quantidade:</label>
+                                <input type="number" id="c-qtd" required placeholder="50" min="1">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-save" style="margin-top: 10px;">CRIAR CUPOM</button>
+                    </form>
+                </div>
+
+                <div id="lista-cupons">Carregando...</div>
+            </section>
+            
+            <section id="config" class="section">
+                <h2 style="color: var(--dark); border-bottom: 2px solid #eee; padding-bottom:10px">
+                    Configurações da Loja
+                </h2>
+
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+
+                    <div class="form-card" style="flex: 1; min-width: 300px;">
+                    <h3>📢 Mensagens e Pagamento</h3>
+                    
+                    <label>Mensagem quando Fechado:</label>
+                    <textarea id="conf-msg-fechado" rows="3" placeholder="Ex: Voltamos amanhã às 14h!"></textarea>
+
+                    <label>Chave Pix:</label>
+                    <input type="text" id="conf-pix" placeholder="Sua chave Pix aqui...">
+
+                    <button id="btn-salvar-config" onclick="salvarConfiguracoesGerais()" class="btn-save" style="margin-top:10px">SALVAR ALTERAÇÕES</button>
+                </div>
+
+                    <div class="form-card" style="flex: 1; min-width: 300px;">
+                        <h3>📂 Organizar Categorias</h3>
+                        <p style="font-size:0.85em; color:#666; margin-bottom:15px">Defina a ordem que aparece no site. A primeira da lista fica no topo.</p>
+
+                        <div style="display:flex; gap:10px; margin-bottom:15px;">
+                            <input type="text" id="nova-cat-nome" placeholder="Nova Categoria..." style="margin:0;">
+                            <button onclick="adicionarCategoriaLista()" style="background:var(--success); color:white; border:none; border-radius:5px; padding:0 15px; cursor:pointer;">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+
+                        <div id="lista-categorias-config" style="max-height: 400px; overflow-y: auto; border: 1px solid #eee; border-radius: 5px;">
+                            </div>
+
+                        <button onclick="salvarOrdemCategorias()" class="btn-save" style="margin-top:15px; background-color:#ffca28; color:#333">SALVAR ORDEM</button>
+                    </div>
+
+                </div>
+            </section>
+            
+            <div id="modal-detalhes" class="modal-overlay">
+                <div class="modal-content">
+                    <span class="modal-close" onclick="fecharModalDetalhes()">&times;</span>
+                    
+                    <div class="modal-header-custom">
+                        <h3 id="det-titulo">Pedido #0000</h3>
+                        <span id="det-status" class="badge-status">Status</span>
+                    </div>
+
+                    <div id="det-conteudo" class="detalhes-corpo">
+                        <p>Carregando...</p>
+                    </div>
+
+                    <div class="modal-footer-custom">
+                        <button id="btn-imprimir-modal" class="btn-action" style="background:#eee; color:#333">
+                            <i class="fas fa-print"></i> Imprimir
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+        </main>
+    </div> 
+    <div id="modal-cropper" class="modal-cropper" style="display: none;">
+        <div class="modal-cropper-content">
+            <h3>Recortar Imagem do Produto</h3>
+            <div class="img-container">
+                <img id="image-to-crop" src="" alt="Imagem para cortar">
+            </div>
+            <div class="cropper-actions">
+                <button type="button" onclick="cancelarCorte()" class="btn-cancel">Cancelar</button>
+                <button type="button" onclick="confirmarCorte()" class="btn-save">Confirmar Recorte</button>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <script type="module" src="js/admin.js"></script>
+</body>
+</html>

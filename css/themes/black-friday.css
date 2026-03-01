@@ -1,0 +1,40 @@
+/* ================================================= */
+/* TEMA BLACK FRIDAY - ESTILO HÍBRIDO */
+/* Fundo Rosa Original + Elementos Pretos */
+/* ================================================= */
+
+.splash-screen { background-color: #000000 !important; }
+
+/* Cabeçalho */
+header { background-color: #000000 !important; border-bottom: 2px solid #000000; }
+
+/* Textos e Títulos */
+h2, .category-title, .product-name, .card-destaque-info h4 { color: #000000 !important; }
+.product-description, .item-price, .form-group label { color: #222222 !important; }
+.category-title { border-bottom-color: #000000 !important; }
+
+/* Preços */
+.product-price, .promo-price, .card-destaque-preco, .final-total { color: #000000 !important; }
+
+/* Botões */
+#checkout-button { background-color: #000000 !important; color: #fff !important; }
+.encomenda-button { background-color: #000000 !important; }
+.add-button { background-color: #000000 !important; border-color: #fff !important; }
+.card-destaque-add-button { background-color: #000000 !important; }
+.schedule-order-button { background-color: #000000 !important; }
+
+/* Carrinho Flutuante */
+.icone-carrinho { background-color: #000000 !important; }
+.contador-carrinho { background-color: #fff !important; color: #000 !important; border: 2px solid #000 !important; }
+
+/* Inputs e Formulários */
+.form-group input, .form-group select, .form-group textarea { border: 1px solid #999 !important; background-color: #fff !important; color: #000 !important; }
+
+/* Bordas dos Cards */
+.product-item, .card-destaque { border-color: #cccccc !important; }
+
+/* Esconde o botão Black Friday dentro da página Black Friday */
+.btn-black-friday { display: none !important; }
+
+/* Pop-up Notificação Estilo BF */
+.notificacao-carrinho { background-color: #000000 !important; color: #ffffff !important; border: 2px solid #ffffff !important; box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5) !important; font-weight: bold; text-transform: uppercase; font-size: 0.9rem; }

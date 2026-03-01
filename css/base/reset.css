@@ -1,0 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=Pacifico&display=swap');
+
+body { 
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+    margin: 0; 
+    padding-top: 55px;
+    background-color: #fdf6f8;
+    overflow-x: hidden; 
+}
+
+main { 
+    width: 90%; 
+    max-width: 1000px; 
+    margin: 0 auto 25px auto; 
+    padding: 15px; 
+    box-sizing: border-box; 
+}
+
+h2 { 
+    color: #a33e6b; 
+    text-align: center; 
+    font-size: 1.5em; 
+    margin-top: 0; 
+}
+
+/* --- AJUSTE MOBILE (ALARGAR O LAYOUT) --- */
+@media (max-width: 600px) {
+    main {
+        width: 96%; /* Usa quase a tela toda */
+        padding: 5px; /* Menos borda lateral */
+    }
+}

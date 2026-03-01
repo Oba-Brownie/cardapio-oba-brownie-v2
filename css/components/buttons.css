@@ -1,0 +1,63 @@
+/* Botão WhatsApp */
+.encomenda-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #F86DB3;
+    border-radius: 8px;
+    padding: 8px 15px;
+    text-decoration: none;
+    transition: transform 0.2s, background-color 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    width: auto;
+    margin-right: 10px;
+    margin-top: -20px;
+}
+.whatsapp-label { display: flex; align-items: center; color: #ffffff; font-size: 0.9em; font-weight: bold; }
+.whatsapp-icon-image { width: 18px; height: 18px; margin-right: 8px; }
+
+/* Botão Checkout */
+.final-checkout-button-container { width: 90%; max-width: 1000px; margin: 20px auto; }
+#checkout-button { width: 100%; padding: 1rem; font-size: 1.2em; background-color: #F86DB3; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: background-color 0.2s; }
+#checkout-button:hover { background-color: #e15ca0; }
+
+/* Botão Agendar */
+.schedule-order-button { background-color: #a33e6b; color: white; border: none; border-radius: 8px; padding: 10px 20px; font-weight: bold; cursor: pointer; margin-top: 15px; display: inline-block; transition: background-color 0.2s; }
+.schedule-order-button:hover { background-color: #8a335a; }
+
+/* Botão Flutuante Black Friday */
+.btn-black-friday {
+    background-color: #F86DB3;
+    color: #ffffff;
+    font-weight: bold;
+    text-decoration: none;
+    padding: 8px 15px;
+    border-radius: 50px;
+    border: 2px solid #ffffff;
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    animation: pulse-black 1.5s infinite;
+    z-index: 1100;
+    text-transform: uppercase;
+    font-size: 0.85em;
+    white-space: nowrap;
+}
+.btn-black-friday:hover { background-color: #F86DB3; transform: translateY(-50%) scale(1.05); }
+
+@keyframes pulse-black {
+    0% { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.7); }
+    70% { box-shadow: 0 0 0 8px rgba(0, 0, 0, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); }
+}
+
+@media (max-width: 480px) {
+    .btn-black-friday { padding: 6px 10px; font-size: 0.7em; right: 10px; border-width: 1px; }
+    
+    /* ALARGAR O BOTÃO FINAL */
+    .final-checkout-button-container {
+        width: 96%;
+    }
+}
