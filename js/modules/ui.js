@@ -74,18 +74,26 @@ export function renderProducts(products, lojaAberta, customOrder = []) {
     productListContainer.innerHTML = '';
     destaquesContainer.innerHTML = '';
 
-    // 1. DESTAQUES
-    const destaques = products.filter(p => p.destaque && p.estoque > 0);
-    if (destaques.length > 0 && lojaAberta) {
+    // Função auxiliar para reconhecer a categoria de Páscoa (independente de acentos ou maiúsculas)
+    const isPascoa = (categoria) => {
+        if (!categoria) return false;
+        const catStr = categoria.toLowerCase().trim();
+        return catStr === 'pré-páscoa' || catStr === 'pré páscoa' || catStr === 'pre-pascoa' || catStr === 'pre pascoa';
+    };
+
+    // 1. CARROSSEL: EXCLUSIVO PARA PRÉ-PÁSCOA
+    const produtosPascoa = products.filter(p => isPascoa(p.categoria) && p.estoque > 0);
+    
+    if (produtosPascoa.length > 0 && lojaAberta) {
         destaquesContainer.style.display = 'block';
         const title = document.createElement('h3');
         title.className = 'category-title';
-        title.textContent = 'Destaques';
+        title.textContent = 'Especial de Páscoa 🐰'; // Você pode mudar esse título se quiser
         
         const carousel = document.createElement('div');
         carousel.className = 'destaques-carousel';
         
-        destaques.forEach(product => {
+        produtosPascoa.forEach(product => {
             const card = document.createElement('div');
             card.className = 'card-destaque';
             card.dataset.productId = product.id;
@@ -109,11 +117,14 @@ export function renderProducts(products, lojaAberta, customOrder = []) {
         destaquesContainer.style.display = 'none';
     }
 
-    // 2. AGRUPAR PRODUTOS POR CATEGORIA
-    let productsToRender = lojaAberta ? products.filter(p => p.estoque > 0) : products;
+    // 2. AGRUPAR RESTANTE DOS PRODUTOS (REMOVENDO A PÁSCOA DA LISTAGEM INFERIOR)
+    let productsToRender = products.filter(p => !isPascoa(p.categoria)); // Tira a páscoa daqui
+    
+    if (lojaAberta) {
+        productsToRender = productsToRender.filter(p => p.estoque > 0);
+    }
 
     const productsByCategory = productsToRender.reduce((acc, product) => { 
-        // Garante que a categoria tenha um nome padrão se vier vazia
         const cat = product.categoria || 'Outros';
         if (!acc[cat]) acc[cat] = []; 
         acc[cat].push(product); 
@@ -124,24 +135,16 @@ export function renderProducts(products, lojaAberta, customOrder = []) {
     let finalOrder = [];
 
     if (customOrder && customOrder.length > 0) {
-        // Começa com a ordem que você configurou no painel
         finalOrder = [...customOrder];
-        
-        // Verifica se tem alguma categoria nos produtos que NÃO está na sua lista personalizada
-        // (para evitar que produtos sumam se você criar uma categoria nova e esquecer de ordenar)
         const categoriasExistentes = Object.keys(productsByCategory);
         const categoriasFaltantes = categoriasExistentes.filter(c => !finalOrder.includes(c)).sort();
-        
-        // Adiciona as faltantes no final
         finalOrder = [...finalOrder, ...categoriasFaltantes];
     } else {
-        // Se não tiver configuração, usa a ordem que veio do banco (baseada no campo 'ordem' ou 'id')
-        // Extrai as categorias na ordem em que aparecem na lista de produtos
         const categoriesSet = new Set(productsToRender.map(p => p.categoria || 'Outros'));
         finalOrder = Array.from(categoriesSet);
     }
 
-    // 4. RENDERIZAR NA ORDEM FINAL
+    // 4. RENDERIZAR NA ORDEM FINAL (Lista Vertical)
     finalOrder.forEach(categoria => {
         if (productsByCategory[categoria] && productsByCategory[categoria].length > 0) {
             const categoryTitle = document.createElement('h3');
@@ -184,9 +187,9 @@ export function renderProducts(products, lojaAberta, customOrder = []) {
         }
     });
 
-    // 5. RENDERIZA ESGOTADOS (SE LOJA ABERTA)
+    // 5. RENDERIZA ESGOTADOS (TIRANDO OS DE PÁSCOA)
     if (lojaAberta) {
-        const soldOutProducts = products.filter(p => p.estoque <= 0);
+        const soldOutProducts = products.filter(p => p.estoque <= 0 && !isPascoa(p.categoria));
         
         if (soldOutProducts.length > 0) {
             const soldOutTitle = document.createElement('h3');
