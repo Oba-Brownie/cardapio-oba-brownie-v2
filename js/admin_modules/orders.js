@@ -223,9 +223,14 @@ export async function marcarComoEnviadoEAvisarCliente(idPedido) {
     }
 
     const primeiroNome = p.cliente_nome.split(' ')[0];
-    const tipo = p.cliente_dados.tipo === 'pickup' ? "já está pronto e separado para Retirada aqui com a gente!" : "acabou de sair para entrega com o nosso motoboy! 🛵💨";
+    let msg = "";
 
-    const msg = `Olá *${primeiroNome}*, tudo bem?\n\nPassando para avisar que o seu pedido do *Oba Brownie* ${tipo}\n\nObrigado pela preferência e um doce dia! 🩷🍫`;
+    // Verifica se é delivery ou retirada para adaptar apenas a primeira frase
+    if (p.cliente_dados.tipo === 'pickup') {
+        msg = `Olá *${primeiroNome}*\n\nPassando para avisar que o seu pedido Oba Brownie já está pronto e separado para Retirada aqui com a gente! 🛍️✨\n\nSe postar fotinha não esquece de nos marcar, caso seu perfil seja privado me avisa pra te seguir de volta e poder compartilhar seu click 💖\n\nObrigada pela preferência e um doce dia! 🩷🍫`;
+    } else {
+        msg = `Olá *${primeiroNome}*\n\nPassando para avisar que o seu pedido Oba Brownie acabou de sair para entrega com o nosso motoboy! 🛵💨\n\nSe postar fotinha não esquece de nos marcar, caso seu perfil seja privado me avisa pra te seguir de volta e poder compartilhar seu click 💖\n\nObrigada pela preferência e um doce dia! 🩷🍫`;
+    }
 
     const urlWhatsApp = `https://wa.me/${telefoneCliente}?text=${encodeURIComponent(msg)}`;
     window.open(urlWhatsApp, '_blank');

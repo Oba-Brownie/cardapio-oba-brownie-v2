@@ -49,13 +49,20 @@ function generatePriceHTML(product) {
     if (product.price === 0) {
         return `<p class="product-price" style="color: #28a745; font-weight: bold;">Grátis</p>`;
     }
-    if (product.originalPrice) {
+    
+    // Puxa o preco_original direto do Supabase ou caso a API já tenha convertido para originalPrice
+    const precoOriginal = product.preco_original || product.originalPrice;
+    
+    // Se existir um preço original e ele for maior que o preço de venda atual
+    if (precoOriginal && parseFloat(precoOriginal) > product.price) {
         return `
             <div class="product-price-container">
-                <span class="original-price">R$ ${product.originalPrice.toFixed(2).replace('.', ',')}</span>
+                <span class="original-price">R$ ${parseFloat(precoOriginal).toFixed(2).replace('.', ',')}</span>
                 <span class="promo-price">R$ ${product.price.toFixed(2).replace('.', ',')}</span>
             </div>`;
     } 
+    
+    // Preço normal sem desconto
     return `<p class="product-price">R$ ${product.price.toFixed(2).replace('.', ',')}</p>`;
 }
 

@@ -189,16 +189,20 @@
                         <label>Nome do Produto:</label> 
                         <input id="p-nome" required placeholder="Ex: Brownie com Nutella">
                         
-                        <div style="display:flex; gap:15px">
-                            <div style="flex:1">
-                                <label>Preço (R$):</label> 
+                        <div style="display:flex; gap:15px; flex-wrap: wrap;">
+                            <div style="flex:1; min-width: 120px;">
+                                <label>Preço de Venda:</label> 
                                 <input type="number" step="0.01" id="p-preco" required placeholder="0.00">
                             </div>
-                            <div style="flex:1">
+                            <div style="flex:1; min-width: 120px;">
+                                <label>Preço Antigo <small style="color:#888; font-weight:normal">(Opcional)</small>:</label> 
+                                <input type="number" step="0.01" id="p-preco-original" placeholder="0.00">
+                            </div>
+                            <div style="flex:1; min-width: 80px;">
                                 <label>Estoque:</label> 
                                 <input type="number" id="p-estoque" required placeholder="0">
                             </div>
-                            <div style="flex:1">
+                            <div style="flex:1; min-width: 80px;">
                                 <label>Ordem:</label> 
                                 <input type="number" id="p-ordem" placeholder="Ex: 1">
                             </div>

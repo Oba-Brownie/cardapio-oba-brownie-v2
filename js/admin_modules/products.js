@@ -143,7 +143,11 @@ export async function carregarProdutos() {
                 <div class="prod-info">
                     <div style="font-weight:bold;">${p.nome} ${badgeDestaque}</div>
                     <div style="color:#666">Ordem: <strong>${p.ordem || 999}</strong> | Est: <strong style="${isEstoqueBaixo ? 'color:#d32f2f' : ''}">${p.estoque}</strong> ${alertaEstoque}</div>
-                    <div style="color:#F86DB3">R$ ${p.preco.toFixed(2)} <span style="width:10px; height:10px; background:${statusCor}; display:inline-block; border-radius:50%; margin-left:5px;"></span></div>
+                    <div style="color:#F86DB3">
+                        ${p.preco_original ? `<span style="text-decoration:line-through; color:#999; font-size:0.85em; margin-right:5px;">R$ ${p.preco_original.toFixed(2)}</span>` : ''}
+                        R$ ${p.preco.toFixed(2)} 
+                        <span style="width:10px; height:10px; background:${statusCor}; display:inline-block; border-radius:50%; margin-left:5px;"></span>
+                    </div>
                 </div>
                 <div class="actions">
                     <button onclick="prepararEdicao('${p.id}')" class="btn-edit"><i class="fas fa-edit"></i></button>
@@ -163,6 +167,7 @@ export function prepararEdicao(id) {
     window.atualizarSelectCategorias().then(() => {
         document.getElementById('p-nome').value = produto.nome;
         document.getElementById('p-preco').value = produto.preco;
+        document.getElementById('p-preco-original').value = produto.preco_original || ''; 
         document.getElementById('p-estoque').value = produto.estoque;
         document.getElementById('p-ordem').value = produto.ordem || 999; 
         document.getElementById('p-desc').value = produto.descricao || '';
@@ -211,27 +216,15 @@ export async function salvarProduto(e) {
         const fotoInput = document.getElementById('p-foto');
         let fotoUrlFinal = window.urlImagemAtual; 
         
-        // Verifica se há uma imagem recortada na memória
         if (window.croppedBlob) {
             btn.innerText = "Enviando Imagem...";
-            
-            const fileExt = 'webp'; // Imagem sempre vai ser webp pelo Cropper
+            const fileExt = 'webp'; 
             const nomeArquivo = `${Date.now()}-imagem.${fileExt}`;
-            
-            const { error: uploadError } = await supabase.storage
-                .from('fotos-brownie')
-                .upload(nomeArquivo, window.croppedBlob, { contentType: 'image/webp' });
-                
+            const { error: uploadError } = await supabase.storage.from('fotos-brownie').upload(nomeArquivo, window.croppedBlob, { contentType: 'image/webp' });
             if (uploadError) throw uploadError;
-            
-            const { data: publicData } = supabase.storage
-                .from('fotos-brownie')
-                .getPublicUrl(nomeArquivo);
-                
+            const { data: publicData } = supabase.storage.from('fotos-brownie').getPublicUrl(nomeArquivo);
             fotoUrlFinal = publicData.publicUrl;
-            
         } else if (fotoInput.files.length > 0) {
-            // Se ele selecionou uma imagem mas por algum motivo fugiu do modal de recorte
             btn.disabled = false;
             btn.innerText = textoOriginal;
             return alert("Por favor, conclua o recorte da imagem antes de salvar.");
@@ -239,10 +232,15 @@ export async function salvarProduto(e) {
 
         let ordemValor = parseInt(document.getElementById('p-ordem').value);
         if (isNaN(ordemValor)) ordemValor = 999;
+        
+        // Pega o valor do preço antigo (se houver)
+        let precoAntigo = document.getElementById('p-preco-original').value;
+        precoAntigo = precoAntigo ? parseFloat(precoAntigo) : null;
 
         const dadosProduto = {
             nome: document.getElementById('p-nome').value,
             preco: parseFloat(document.getElementById('p-preco').value),
+            preco_original: precoAntigo, // ENVIANDO PARA O BANCO
             categoria: document.getElementById('p-categoria').value,
             estoque: parseInt(document.getElementById('p-estoque').value),
             ordem: ordemValor,
@@ -256,13 +254,12 @@ export async function salvarProduto(e) {
             const { error } = await supabase.from('produtos').update(dadosProduto).eq('id', window.produtoEmEdicaoId);
             if (error) throw error;
             alert("Produto atualizado!");
-            cancelarEdicao();
         } else {
             const { error } = await supabase.from('produtos').insert(dadosProduto);
             if (error) throw error;
             alert("Produto criado!");
-            cancelarEdicao();
         }
+        cancelarEdicao();
         window.nav('produtos');
     } catch (erro) { alert("Erro: " + erro.message); } 
     finally { btn.innerText = textoOriginal; btn.disabled = false; }
