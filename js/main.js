@@ -10,7 +10,7 @@ import { verificarStatusLoja, copyToClipboard } from './modules/utils.js';
 import { supabase } from './config/supabase-config.js';
 
 import { 
-    initCart, // <-- NOVA FUNÇÃO IMPORTADA AQUI
+    initCart, 
     addToCart as addToCartModule, 
     setTaxaEntrega, 
     getCart, 
@@ -515,10 +515,28 @@ async function handleCheckout() {
         const { error: erroPedido } = await supabase.from('pedidos').insert([pedido]);
         if(erroPedido) throw erroPedido;
 
+        // =========================================================
+        // CORREÇÃO DO ESTOQUE AQUI: Consulta o banco antes de baixar
+        // =========================================================
         for (const item of cart) {
-            const novoEstoque = item.estoque - item.quantity;
-            if (novoEstoque >= 0) await supabase.from('produtos').update({ estoque: novoEstoque }).eq('id', item.id);
+            // 1. Busca o estoque real e super atualizado direto do banco de dados
+            const { data: produtoAtual, error: erroBusca } = await supabase
+                .from('produtos')
+                .select('estoque')
+                .eq('id', item.id)
+                .single();
+            
+            if (!erroBusca && produtoAtual) {
+                // 2. Calcula usando o estoque real do banco, não o da memória do carrinho
+                const novoEstoque = produtoAtual.estoque - item.quantity;
+                
+                // 3. Atualiza o banco de dados apenas se não for ficar negativo
+                if (novoEstoque >= 0) {
+                    await supabase.from('produtos').update({ estoque: novoEstoque }).eq('id', item.id);
+                }
+            }
         }
+        // =========================================================
 
         if (window.cupomAplicado) {
             const novaQtdCupom = window.cupomAplicado.quantidade - 1;
