@@ -1,0 +1,53 @@
+.form-group { margin-bottom: 15px; text-align: left; }
+.form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 5px; font-size: 1em; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; resize: vertical; }
+
+.taxa-info-box { display: none; background-color: #fdf6f8; padding: 10px; border-radius: 5px; border: 1px solid #FADADD; margin-top: -5px; margin-bottom: 15px; font-size: 0.85em; color: #a33e6b; line-height: 1.4; white-space: pre-line; }
+
+/* Container das opções (Caixa Rosa) */
+.delivery-options {
+    display: flex;
+    flex-wrap: wrap;       /* A MÁGICA: Permite quebrar linha se a tela for muito pequena */
+    align-items: center;   /* Alinha verticalmente */
+    justify-content: flex-start;
+    gap: 15px;             /* Espaço seguro entre as opções */
+    
+    background-color: #fdf6f8;
+    padding: 12px;         /* Um pouco mais de espaço interno */
+    border-radius: 8px;
+    border: 1px solid #FADADD;
+    width: 100%;           /* Garante que use a largura total */
+    box-sizing: border-box;
+}
+
+/* Os botões clicáveis (Label) */
+.delivery-options label {
+    display: flex;
+    align-items: center;   /* Garante que a bolinha e o texto fiquem na mesma linha */
+    cursor: pointer;
+    font-weight: normal !important;
+    margin: 0;
+    white-space: nowrap;   /* Impede que o texto "Retirada no Local" quebre feio */
+}
+
+/* A bolinha de seleção (Input Radio) */
+.delivery-options input[type="radio"] {
+    margin: 0 8px 0 0;     /* Espaço apenas na direita do texto */
+    min-width: 20px;       /* Tamanho mínimo para não amassar no iPhone */
+    min-height: 20px;      /* Tamanho mínimo */
+    accent-color: #F86DB3; /* BÔNUS: Deixa a bolinha ROSA igual à marca! */
+    cursor: pointer;
+}
+
+.pickup-address-info { 
+  background-color: #fdf6f8; 
+  padding: 15px; 
+  border-radius: 5px; 
+  border: 1px solid #FADADD; 
+  font-size: 0.9em; 
+  color: #a33e6b; 
+  line-height: 1.5; }
+
+.pickup-address-info p { 
+  margin: 0; 
+}

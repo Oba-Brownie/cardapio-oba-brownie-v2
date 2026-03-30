@@ -1,0 +1,16 @@
+/* ================================================= */
+/* AGREGADOR PRINCIPAL DE ESTILOS (PINK THEME)       */
+/* ================================================= */
+
+/* 1. Base e Reset */
+@import url('base/reset.css');
+
+/* 2. Layout */
+@import url('layout/header.css');
+@import url('layout/forms.css');
+
+/* 3. Componentes */
+@import url('components/buttons.css');
+@import url('components/products.css');
+@import url('components/cart.css');
+@import url('components/ui.css');

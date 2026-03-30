@@ -1,0 +1,10 @@
+/* ARQUIVO: css/admin.css */
+
+/* Importa os módulos na ordem correta */
+@import url('modules/variaveis.css');
+@import url('modules/layout.css');
+@import url('modules/forms.css');
+@import url('modules/kanban.css');
+@import url('modules/estoque.css');
+@import url('modules/historico.css');
+

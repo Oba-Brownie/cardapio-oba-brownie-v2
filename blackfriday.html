@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oba Brownie</title>
+    <meta name="theme-color" content="#f0a1bc">
+    <link rel="shortcut icon" href="images/Logo3.png" type="image/png">
+    <link rel="stylesheet" href="css/style-black.css">
+</head>
+<body>
+  <div id="aviso-promo-bf" class="aviso-promo-bf">
+    ⚠️ AVISO! <br> BAIRROS SELECIONADOS TERÃO TAXAS DE ENTREGA GRÁTIS EM COMPRAS ACIMA DE R$60,00
+  </div>
+    <div id="notificacao-carrinho" class="notificacao-carrinho"></div>
+
+    <header>
+        <div class="header-small">
+            <img src="images/Mascote2.png" alt="Logo Oba Brownie" class="header-logo-small">
+        </div>
+    </header>
+
+    <main>
+        <div class="top-info-container">
+            <div class="left-info">
+                <img src="images/melhor-hora.png" alt="Bora adoçar o dia?" class="info-image-left">
+            </div>
+            <div class="right-info">
+                <div class="info-image-right-container">
+                    <img src="images/encomendas.png" alt="Encomendas para eventos em geral" class="info-image-right">
+                </div>
+                <div class="encomenda-whatsapp-container">
+                    <a href="https://wa.me/5599991675891" class="encomenda-button" target="_blank">
+                        <span class="whatsapp-label">
+                            <img src="images/icons8-whatsapp-502.png" alt="WhatsApp" class="whatsapp-icon-image">
+                            WhatsApp
+                        </span>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div id="aviso-loja-fechada" class="aviso-loja-fechada"></div>
+        <section id="destaques-section" class="destaques-section"></section>
+
+        <div id="product-list"></div>
+    </main>
+
+    <section class="checkout-area">
+        <div class="cart-section">
+            <h2>Meu Carrinho</h2>
+            <div id="cart-items">
+                <p>Seu carrinho está vazio.</p>
+            </div>
+            <div class="total-details">
+                <div class="total-line">
+                    <span>Subtotal:</span>
+                    <span id="subtotal-cart">R$ 0,00</span>
+                </div>
+                <div class="total-line" id="delivery-fee-line">
+                    <span>Taxa de Entrega:</span>
+                    <span id="taxa-entrega-cart">R$ 0,00</span>
+                </div>
+                <div class="total-line" id="card-fee-line" style="display: none;">
+                    <span>Taxa da Maquininha:</span>
+                    <span id="card-fee-cart">R$ 0,00</span>
+                </div>
+                <div class="total-line final-total">
+                    <span>Total:</span>
+                    <span id="cart-total">R$ 0,00</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="customer-details">
+            <h2>Seus Dados</h2>
+            
+            <div id="scheduling-info-box" class="scheduling-info-box" style="display: none;">
+                <p><strong>Data do Pedido:</strong> <span id="next-day-date"></span></p>
+                <p>Seu pedido agendado só será confirmado após o envio do comprovante de pagamento via Pix.</p>
+            </div>
+
+            <div id="scheduling-time-box" class="form-group" style="display: none;">
+                <label for="scheduling-time-select">Horário para Entrega/Retirada (Amanhã)</label>
+                <select id="scheduling-time-select">
+                    </select>
+            </div>
+
+            <div class="form-group">
+                <label for="customer-name">Nome Completo</label>
+                <input type="text" id="customer-name" placeholder="Digite seu nome">
+            </div>
+            <div class="form-group">
+                <label for="customer-phone">Seu WhatsApp</label>
+                <input type="tel" id="customer-phone" placeholder="(99) 99999-9999">
+            </div>
+
+            <div class="form-group">
+                <label>Tipo de Entrega</label>
+                <div class="delivery-options">
+                    <label for="delivery-option">
+                        <input type="radio" id="delivery-option" name="delivery_type" value="delivery" checked>
+                        Delivery
+                    </label>
+                    <label for="pickup-option">
+                        <input type="radio" id="pickup-option" name="delivery_type" value="pickup">
+                        Retirada no Local
+                    </label>
+                </div>
+            </div>
+
+            <div id="pickup-address-info" class="pickup-address-info" style="display: none;">
+                <p><strong>Endereço para Retirada:</strong></p>
+                <p>Rua Betim Q11 L14<br>Porto Seguro II</p>
+            </div>
+
+            <div id="delivery-fields">
+                <div class="form-group">
+                    <label for="bairro-select">Bairro para Entrega</label>
+                    <select id="bairro-select"></select>
+                </div>
+                <div class="form-group">
+                    <label for="customer-address">Endereço (Rua e Número)</label>
+                    <input type="text" id="customer-address" placeholder="Ex: Rua das Flores, 123">
+                </div>
+                <div class="form-group">
+                    <label for="customer-reference">Ponto de Referência (Opcional)</label>
+                    <input type="text" id="customer-reference" placeholder="Ex: Próximo ao mercado, casa azul">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="customer-observation">Observação (Opcional)</label>
+                <textarea id="customer-observation" rows="6" placeholder="Informações para o pedido, ex: Caso seja para outra pessoa, informe o nome de quem irá receber."></textarea>
+            </div>
+            <div class="form-group">
+                <label for="payment-method">Forma de Pagamento</label>
+                <select id="payment-method">
+                    <option value="">Selecione uma opção</option>
+                    <option value="Dinheiro">Dinheiro</option>
+                    <option value="Pix">Pix</option>
+                    <option value="Cartão de Crédito">Cartão de Crédito</option>
+                    <option value="Cartão de Débito">Cartão de Débito</option>
+                </select>
+            </div>
+            <div id="taxa-info" class="taxa-info-box"></div>
+            <div id="troco-section" class="form-group" style="display: none;">
+                <label for="troco-para">Troco para quanto?</label>
+                <input type="text" id="troco-para" inputmode="decimal" placeholder="Ex: 50,00">
+            </div>
+        </div>
+    </section>
+
+    <div class="final-checkout-button-container">
+        <button id="checkout-button">Enviar Pedido no WhatsApp</button>
+    </div>
+
+    <div id="pix-popup" class="pix-popup-overlay">
+        <div class="pix-popup-content">
+            <span class="close-button" onclick="closePixPopup()">&times;</span>
+            <h3>Pague com Pix</h3>
+            <p>Escaneie o QR Code ou copie a chave abaixo:</p>
+            <img src="images/pix.jpg" alt="QR Code Pix" class="pix-qrcode">
+            <div class="pix-key-container">
+                <span id="pix-key">05153005356</span>
+                <button onclick="copyPixKey()">Copiar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="carrinho-flutuante" class="carrinho-flutuante">
+        <div class="icone-carrinho">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+            <span id="contador-carrinho" class="contador-carrinho">0</span>
+        </div>
+    </div>
+
+    <script type="module" src="js/main.js?v=2"></script>
+
+</body>
+<script>
+    // Script exclusivo para o aviso da Black Friday
+    document.addEventListener("DOMContentLoaded", function() {
+        const aviso = document.getElementById('aviso-promo-bf');
+        
+        if (aviso) {
+            // Espera 1 segundo após carregar para aparecer (para não ser invasivo demais logo de cara)
+            setTimeout(() => {
+                aviso.classList.add('visivel');
+                
+                // Remove o aviso automaticamente após 7 segundos (tempo suficiente para ler)
+                setTimeout(() => {
+                    aviso.classList.remove('visivel');
+                }, 7000); 
+            }, 1000);
+        }
+    });
+</script>
+</html>

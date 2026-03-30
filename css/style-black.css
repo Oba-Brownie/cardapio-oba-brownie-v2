@@ -1,0 +1,12 @@
+/* ================================================= */
+/* AGREGADOR TEMA BLACK FRIDAY                       */
+/* ================================================= */
+
+/* 1. Carrega toda a estrutura padrão (Rosa) */
+@import url('style.css');
+
+/* 2. Importa a Fonte Anton para o cabeçalho específico */
+@import url('https://fonts.googleapis.com/css2?family=Anton&display=swap');
+
+/* 3. Carrega as sobrescritas de cores */
+@import url('themes/black-friday.css');

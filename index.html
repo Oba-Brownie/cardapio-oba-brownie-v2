@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oba Brownie</title>
+    <meta name="theme-color" content="#f0a1bc">
+    <link rel="apple-touch-icon" sizes="180x180" href="images/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16x16.png">
+    <link rel="manifest" href="images/site.webmanifest">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>    
+    <div id="notificacao-carrinho" class="notificacao-carrinho"></div>
+
+    <div id="splash-screen" class="splash-screen">
+        <img src="images/splash.png" alt="Logo Oba Brownie">
+    </div>
+
+    <header>
+        <div class="header-small">
+            <img src="images/novo-mascote2(1).png" alt="Logo Oba Brownie" class="header-logo-small">
+        </div>
+        <a href="blackfriday.html" id="status-loja-btn" class="btn-black-friday">
+            Carregando...
+        </a>
+    </header>
+
+    <main>
+        <div class="top-info-container">
+            <div class="left-info">
+                <img src="images/melhor-hora.png" alt="Bora adoçar o dia?" class="info-image-left">
+            </div>
+            <div class="right-info">
+                <a href="https://wa.me/5599991675891?text=Ol%C3%A1!%20Gostaria%20de%20saber%20mais%20sobre%20as%20encomendas%20de%20P%C3%A1scoa!" target="_blank" style="display: block; width: 100%; transition: transform 0.3s ease;">
+                    <img src="images/Vetor-pascoa.png" alt="Encomendas de Páscoa" style="width: 100%; height: auto; border-radius: 8px;" onmouseover="this.parentElement.style.transform='scale(1.05)'" onmouseout="this.parentElement.style.transform='scale(1)'">
+                </a>
+            </div>
+        </div>
+        
+        <div id="aviso-loja-fechada" class="aviso-loja-fechada"></div>
+        <section id="destaques-section" class="destaques-section"></section>
+
+        <div id="product-list"></div>
+    </main>
+
+    <section class="checkout-area">
+        <div class="customer-details">
+            <h2>Seus Dados</h2>
+            
+            <div id="scheduling-info-box" class="scheduling-info-box" style="display: none;">
+                <p><strong>Data do Pedido:</strong> <span id="next-day-date"></span></p>
+                <p>Seu pedido agendado só será confirmado após o envio do comprovante de pagamento via Pix.</p>
+            </div>
+
+            <div id="scheduling-time-box" class="form-group" style="display: none;">
+                <label for="scheduling-time-select">Horário para Entrega/Retirada (Amanhã)</label>
+                <select id="scheduling-time-select">
+                    </select>
+            </div>
+
+            <div class="form-group">
+                <label for="customer-name">Nome Completo</label>
+                <input type="text" id="customer-name" placeholder="Digite seu nome">
+            </div>
+            <div class="form-group">
+                <label for="customer-phone">Seu WhatsApp</label>
+                <input type="tel" id="customer-phone" placeholder="(99) 99999-9999">
+            </div>
+
+            <div class="form-group">
+                <label>Tipo de Entrega</label>
+                <div class="delivery-options">
+                    <label for="delivery-option">
+                        <input type="radio" id="delivery-option" name="delivery_type" value="delivery" checked>
+                        Delivery
+                    </label>
+                    <label for="pickup-option">
+                        <input type="radio" id="pickup-option" name="delivery_type" value="pickup">
+                        Retirada no Local
+                    </label>
+                </div>
+            </div>
+
+            <div id="pickup-address-info" class="pickup-address-info" style="display: none;">
+                <p><strong>Endereço para Retirada:</strong></p>
+                <p>Rua Betim Q11 L14<br>Porto Seguro II</p>
+            </div>
+
+            <div id="delivery-fields">
+                <div class="form-group">
+                    <label for="bairro-select">Bairro para Entrega</label>
+                    <select id="bairro-select"></select>
+                </div>
+                <div class="form-group">
+                    <label for="customer-address">Endereço (Rua e Número)</label>
+                    <input type="text" id="customer-address" placeholder="Ex: Rua das Flores, 123">
+                </div>
+                <div class="form-group">
+                    <label for="customer-reference">Ponto de Referência (Opcional)</label>
+                    <input type="text" id="customer-reference" placeholder="Ex: Próximo ao mercado, casa azul">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="customer-observation">Observação (Opcional)</label>
+                <textarea id="customer-observation" rows="6" placeholder="Informações para o pedido, ex: Caso seja para outra pessoa, informe o nome de quem irá receber."></textarea>
+            </div>
+            
+            <div class="cupom-section">
+                <label class="cupom-label" for="cupom-input">Tem um Cupom de Desconto?</label>
+                
+                <div class="cupom-input-group">
+                    <input type="text" id="cupom-input" class="cupom-input" placeholder="EX: OBA10">
+                    <button type="button" id="btn-aplicar-cupom" class="cupom-btn" onclick="aplicarCupom()">Aplicar</button>
+                </div>
+                
+                <p id="cupom-msg" class="cupom-msg"></p>
+            </div>
+
+            <div class="form-group">
+                <label for="payment-method">Forma de Pagamento</label>
+                <select id="payment-method">
+                    <option value="">Selecione uma opção</option>
+                    <option value="Dinheiro">Dinheiro</option>
+                    <option value="Pix">Pix</option>
+                    <option value="Cartão de Crédito">Cartão de Crédito</option>
+                    <option value="Cartão de Débito">Cartão de Débito</option>
+                </select>
+            </div>
+            <div id="taxa-info" class="taxa-info-box"></div>
+            <div id="troco-section" class="form-group" style="display: none;">
+                <label for="troco-para">Troco para quanto?</label>
+                <input type="text" id="troco-para" inputmode="decimal" placeholder="Ex: 50,00">
+            </div>
+        </div>
+
+        <div class="cart-section">
+            <h2>Meu Carrinho</h2>
+            <div id="cart-items">
+                <p>Seu carrinho está vazio.</p>
+            </div>
+            <div class="total-details">
+                <div class="total-line">
+                    <span>Subtotal:</span>
+                    <span id="subtotal-cart">R$ 0,00</span>
+                </div>
+                
+                <div class="total-line discount-line" id="discount-line">
+                    <span>Desconto (<span id="discount-name-label">Cupom</span>):</span>
+                    <span id="discount-cart-value">- R$ 0,00</span>
+                </div>
+                
+                <div class="total-line" id="delivery-fee-line">
+                    <span>Taxa de Entrega:</span>
+                    <span id="taxa-entrega-cart">R$ 0,00</span>
+                </div>
+                
+                <div class="total-line final-total">
+                    <span>Total:</span>
+                    <span id="cart-total">R$ 0,00</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="final-checkout-button-container">
+        <button id="checkout-button">Enviar Pedido no WhatsApp</button>
+    </div>
+
+    <div id="carrinho-flutuante" class="carrinho-flutuante">
+        <div class="icone-carrinho">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+            <span id="contador-carrinho" class="contador-carrinho">0</span>
+        </div>
+    </div>
+
+    <div id="modal-sucesso-pedido" class="modal-sucesso-overlay">
+        <div class="modal-sucesso-content">
+            <div class="modal-sucesso-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </div>
+            
+            <h2>Pedido Registrado!</h2>
+            <p>Seu pedido foi salvo com sucesso no nosso sistema. <strong>Clique no botão abaixo</strong> para enviar a mensagem no WhatsApp e darmos início ao preparo!</p>
+            
+            <a id="btn-ir-whatsapp" href="#" target="_blank" class="btn-sucesso-whatsapp">
+                <img src="images/icons8-whatsapp-502.png" alt="WhatsApp"> ENVIAR PARA O WHATSAPP
+            </a>
+            
+            <button onclick="fecharModalSucesso()" class="btn-sucesso-fechar">
+                Fechar e voltar ao cardápio
+            </button>
+        </div>
+    </div>
+
+    <script type="module" src="js/main.js?v=6"></script>
+
+</body>
+</html>

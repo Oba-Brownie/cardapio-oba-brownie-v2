@@ -1,0 +1,32 @@
+.tabela-pedidos {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.tabela-pedidos thead { background-color: var(--primary); color: white; }
+.tabela-pedidos th, .tabela-pedidos td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
+.tabela-pedidos tr:hover { background-color: #f9f9f9; }
+
+.badge-status { padding: 4px 8px; border-radius: 12px; font-size: 0.85em; font-weight: bold; }
+.badge-Concluido { background: #e8f5e9; color: #2e7d32; }
+.badge-Novo { background: #ffebee; color: #c62828; }
+.badge-Entrega { background: #fff8e1; color: #f57f17; }
+
+/* --- AJUSTE MOBILE TABELAS --- */
+@media (max-width: 768px) {
+    .tabela-pedidos {
+        display: block; /* Permite scroll */
+        width: 100%;
+        overflow-x: auto; /* Scroll horizontal se não couber */
+        white-space: nowrap; /* Evita quebra de texto feia */
+    }
+    
+    .tabela-pedidos th, .tabela-pedidos td {
+        padding: 10px;
+        font-size: 0.9em;
+    }
+}

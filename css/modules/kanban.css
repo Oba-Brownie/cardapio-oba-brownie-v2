@@ -1,0 +1,107 @@
+.kanban-board {
+    display: flex;
+    gap: 20px;
+    height: calc(100vh - 140px); /* Ajuste para caber na tela */
+    overflow-x: auto;
+    padding-bottom: 10px;
+}
+
+.kanban-col {
+    flex: 1;
+    min-width: 300px;
+    background-color: #f4f4f9;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #eee;
+    height: 100%; /* Ocupa altura total do pai */
+}
+
+.col-header {
+    padding: 15px;
+    border-radius: 12px 12px 0 0;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    flex-shrink: 0; /* Cabeçalho não encolhe */
+}
+
+.header-novos { background-color: #F86DB3; }
+.header-entrega { background-color: #ffca28; color: #333; }
+.header-concluidos { background-color: #4CAF50; }
+
+.col-body {
+    padding: 10px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.count-badge {
+    background: rgba(255,255,255,0.3);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.9em;
+}
+
+/* Cards de Pedido */
+.card-pedido { 
+    background: var(--white); 
+    padding: 15px; 
+    border-radius: 10px; 
+    margin-bottom: 10px; 
+    border-left: 5px solid #ccc; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+    transition: transform 0.2s;
+    font-size: 0.95em;
+}
+
+.card-pedido.status-Novo { border-left-color: #F86DB3; background: #e8f5e9; animation: piscar 2s infinite; }
+.card-pedido.status-Entrega { border-left-color: #ffca28; }
+.card-pedido.status-Concluido { border-left-color: #4CAF50; opacity: 0.8; }
+
+@keyframes piscar { 50% { background: #fff; } }
+
+/* Botões de Ação no Card */
+.card-actions {
+    display: flex;
+    gap: 5px;
+    margin-top: 10px;
+    border-top: 1px solid #eee;
+    padding-top: 10px;
+}
+
+.btn-action {
+    flex: 1;
+    padding: 10px; /* Botão maior para o dedo */
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.85em;
+    color: white;
+}
+
+.btn-move-entrega { background-color: #ffca28; color: #333; }
+.btn-move-concluido { background-color: #4CAF50; }
+
+/* --- AJUSTE MOBILE KANBAN --- */
+@media (max-width: 768px) {
+    .kanban-board {
+        flex-direction: column; /* Um embaixo do outro */
+        height: auto; /* Altura automática (scroll da página) */
+        overflow: visible;
+    }
+
+    .kanban-col {
+        min-width: 100%; /* Largura total */
+        height: auto;
+        margin-bottom: 20px;
+        max-height: 500px; /* Limite de altura por coluna pra não ficar infinito */
+    }
+    
+    .col-body {
+        min-height: 100px; /* Garante que a área vazia apareça */
+    }
+}
