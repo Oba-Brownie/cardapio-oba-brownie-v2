@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Isolado - API ImgBB</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 100%;
+        }
+        h2 { color: #333; margin-top: 0; }
+        .form-group { margin-bottom: 20px; }
+        input[type="file"] {
+            display: block;
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px dashed #ccc;
+            border-radius: 6px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            transition: 0.2s;
+        }
+        button:hover { background: #0056b3; }
+        #status {
+            margin-top: 15px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .resultado {
+            margin-top: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+            display: none;
+        }
+        .resultado img {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        .json-box {
+            background: #2d2d2d;
+            color: #a9b7c6;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Teste de Conexão: ImgBB</h2>
+        <p style="color: #666; font-size: 0.9em;">Este arquivo testa a comunicação direta com o servidor `api.imgbb.com` sem passar pelo código da loja.</p>
+        
+        <div class="form-group">
+            <input type="file" id="arquivo-foto" accept="image/*">
+        </div>
+        
+        <button id="btn-upload" onclick="iniciarUpload()">Fazer Upload Teste</button>
+        
+        <div id="status"></div>
+        
+        <div id="area-resultado" class="resultado">
+            <h3 style="margin-top:0;">Resultado:</h3>
+            <img id="img-preview" src="" alt="Imagem enviada">
+            <p><strong>Link Direto:</strong> <a id="link-preview" href="#" target="_blank"></a></p>
+            
+            <h4>Resposta Bruta da API:</h4>
+            <div class="json-box" id="json-preview"></div>
+        </div>
+    </div>
+
+    <script>
+        async function iniciarUpload() {
+            const input = document.getElementById('arquivo-foto');
+            const status = document.getElementById('status');
+            const areaResultado = document.getElementById('area-resultado');
+            const btn = document.getElementById('btn-upload');
+
+            if (input.files.length === 0) {
+                alert('Selecione uma imagem para testar.');
+                return;
+            }
+
+            const file = input.files[0];
+            // Utilizando a API Key exata que estava configurada no seu painel Admin
+            const apiKey = '51c759a4e8edeca1edb1d902d8e2c27a'; 
+            
+            const formData = new FormData();
+            formData.append('image', file);
+
+            // Interface de carregamento
+            btn.disabled = true;
+            status.style.color = '#007bff';
+            status.textContent = 'Enviando pacote para o servidor... Aguarde.';
+            areaResultado.style.display = 'none';
+
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000); // Timeout de 15 segundos para forçar o erro se travar
+
+                const resposta = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+                    method: 'POST',
+                    body: formData,
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+                const dados = await resposta.json();
+
+                if (dados.success) {
+                    status.style.color = '#28a745';
+                    status.textContent = 'Upload concluído com sucesso (Status 200 OK)!';
+                    
+                    document.getElementById('img-preview').src = dados.data.url;
+                    document.getElementById('link-preview').href = dados.data.url;
+                    document.getElementById('link-preview').textContent = dados.data.url;
+                    document.getElementById('json-preview').textContent = JSON.stringify(dados, null, 2);
+                    
+                    areaResultado.style.display = 'block';
+                } else {
+                    status.style.color = '#dc3545';
+                    status.textContent = 'A API respondeu, mas retornou um erro.';
+                    document.getElementById('json-preview').textContent = JSON.stringify(dados, null, 2);
+                    areaResultado.style.display = 'block';
+                }
+
+            } catch (erro) {
+                status.style.color = '#dc3545';
+                if (erro.name === 'AbortError') {
+                    status.textContent = 'FALHA: Tempo Limite Esgotado (Connection Timed Out). O servidor demorou mais de 15s para responder.';
+                } else {
+                    status.textContent = `FALHA DE REDE: ${erro.message} - Verifique a aba Network/Console.`;
+                }
+            } finally {
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

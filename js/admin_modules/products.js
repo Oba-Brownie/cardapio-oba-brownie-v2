@@ -1,6 +1,6 @@
 /* ================================================= */
 /* ARQUIVO: js/admin_modules/products.js             */
-/* Gerenciamento de Produtos, Upload (ImgBB) e Galeria*/
+/* Gerenciamento de Produtos, Upload (Supabase Storage) e Galeria */
 /* ================================================= */
 
 import { supabase } from '../config/supabase-config.js';
@@ -36,7 +36,7 @@ export function confirmarCorte() {
         fillColor: '#fff',
     });
 
-    // MELHORIA DE QUALIDADE (0.95 de qualidade em vez de 0.7)
+    // MELHORIA DE QUALIDADE (0.95 de qualidade em formato ultra-leve WebP)
     canvas.toBlob((blob) => {
         window.croppedBlob = blob;
         
@@ -178,7 +178,6 @@ export function prepararEdicao(id) {
         document.getElementById('p-ativo').checked = produto.ativo;
         document.getElementById('p-destaque').checked = produto.destaque || false;
         
-        // Limpa o novo campo de URL ao editar
         const urlInput = document.getElementById('p-foto-url');
         if (urlInput) urlInput.value = '';
 
@@ -205,7 +204,6 @@ export function cancelarEdicao() {
     window.croppedBlob = null; 
     currentFile = null;
     
-    // Limpa o novo campo de URL ao cancelar
     const urlInput = document.getElementById('p-foto-url');
     if (urlInput) urlInput.value = '';
 
@@ -233,27 +231,34 @@ export async function salvarProduto(e) {
         if (urlInput && urlInput.value.trim() !== '') {
             fotoUrlFinal = urlInput.value.trim();
         } 
-        // PRIORIDADE 2: Se ela fez o upload e cortou a foto, mandamos para o ImgBB
+        // PRIORIDADE 2: Se ela fez o upload e cortou a foto, mandamos direto para o Supabase Storage!
         else if (window.croppedBlob) {
-            btn.innerText = "Enviando Imagem (Nuvem Externa)...";
+            btn.innerText = "Enviando para Nuvem Própria...";
             
-            const imgbbApiKey = '51c759a4e8edeca1edb1d902d8e2c27a'; 
+            // 1. Cria um nome único para a imagem baseado na data atual
+            const nomeArquivo = `brownie_${Date.now()}.webp`;
             
-            const formData = new FormData();
-            formData.append("image", window.croppedBlob, "brownie.webp");
-            
-            const response = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbApiKey}`, {
-                method: 'POST',
-                body: formData
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                fotoUrlFinal = data.data.url; 
-            } else {
-                throw new Error("Falha ao hospedar a imagem. Verifique a API Key.");
+            // 2. Faz o upload da imagem para o bucket 'produtos'
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('produtos')
+                .upload(nomeArquivo, window.croppedBlob, {
+                    cacheControl: '3600',
+                    upsert: false,
+                    contentType: 'image/webp'
+                });
+                
+            if (uploadError) {
+                console.error("Erro no upload:", uploadError);
+                throw new Error("Falha ao salvar a imagem no servidor. Verifique se criou o bucket 'produtos' e se ele é Público.");
             }
+            
+            // 3. Pede ao Supabase o link público dessa imagem que acabamos de subir
+            const { data: publicUrlData } = supabase.storage
+                .from('produtos')
+                .getPublicUrl(nomeArquivo);
+                
+            fotoUrlFinal = publicUrlData.publicUrl;
+            
         } 
         // TRATAMENTO DE ERRO: Se ela escolheu um arquivo mas não cortou
         else if (fotoInput && fotoInput.files.length > 0) {
@@ -355,7 +360,7 @@ export function filtrarProdutos(termo) {
 
 
 // =========================================================
-// === GALERIA DE IMAGENS INTERNA (COM EXCLUSÃO) ===
+// === GALERIA DE IMAGENS INTERNA (COM EXCLUSÃO FÍSICA) ===
 // =========================================================
 
 export async function abrirGaleria() {
@@ -366,7 +371,6 @@ export async function abrirGaleria() {
     modal.style.display = 'flex';
 
     try {
-        // Puxa todas as imagens do banco que não sejam nulas
         const { data } = await supabase.from('produtos').select('imagem').not('imagem', 'is', null);
         
         if (!data || data.length === 0) {
@@ -374,32 +378,27 @@ export async function abrirGaleria() {
             return;
         }
 
-        // Remove links duplicados para não mostrar a mesma foto duas vezes
         const urlsUnicas = [...new Set(data.map(p => p.imagem).filter(url => url && url.startsWith('http')))];
 
         grid.innerHTML = '';
         urlsUnicas.forEach(url => {
-            // Cria um "quadro" para a imagem e para o botão de apagar
             const wrapper = document.createElement('div');
             wrapper.style.cssText = 'position: relative; width: 100%; height: 110px; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border: 3px solid transparent; transition: all 0.2s;';
             wrapper.onmouseover = () => { wrapper.style.borderColor = 'var(--primary)'; wrapper.style.transform = 'scale(1.05)'; };
             wrapper.onmouseout = () => { wrapper.style.borderColor = 'transparent'; wrapper.style.transform = 'scale(1)'; };
 
-            // A Imagem clicável
             const img = document.createElement('img');
             img.src = url;
             img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; cursor: pointer;';
             img.onclick = () => selecionarImagemGaleria(url);
 
-            // O Botão de Lixeira vermelho no canto superior
             const btnDel = document.createElement('button');
             btnDel.innerHTML = '<i class="fas fa-trash"></i>';
             btnDel.title = "Apagar Imagem";
             btnDel.style.cssText = 'position: absolute; top: 5px; right: 5px; background: rgba(220, 53, 69, 0.9); color: white; border: none; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.8em; box-shadow: 0 2px 4px rgba(0,0,0,0.3);';
             
-            // Lógica ao clicar na lixeira
             btnDel.onclick = (e) => {
-                e.stopPropagation(); // Evita que clique selecione a imagem por acidente
+                e.stopPropagation(); 
                 deletarImagemGaleria(url);
             };
 
@@ -424,13 +423,11 @@ export function fecharGaleria() {
 }
 
 export function selecionarImagemGaleria(url) {
-    // Preenche o campo e mostra a pré-visualização
     document.getElementById('p-foto-url').value = url;
     const preview = document.getElementById('preview-img');
     preview.src = url;
     preview.style.display = 'block';
     
-    // Limpa a foto de upload normal para não dar conflito
     document.getElementById('p-foto').value = '';
     window.croppedBlob = null; 
     
@@ -438,18 +435,25 @@ export function selecionarImagemGaleria(url) {
 }
 
 export async function deletarImagemGaleria(url) {
-    if(confirm('🚨 Tem certeza que deseja apagar esta imagem?\n\nEla será removida da galeria e também de TODOS os produtos que a estiverem usando atualmente.')) {
+    if(confirm('🚨 Tem certeza que deseja apagar esta imagem?\n\nEla será removida da galeria, de todos os produtos, e o arquivo físico será apagado do servidor permanentemente.')) {
         try {
-            // Tira a foto de todos os produtos que usam esse link, trocando por NULL
-            const { error } = await supabase.from('produtos').update({ imagem: null }).eq('imagem', url);
+            // 1. Tira a foto de todos os produtos que usam esse link no Banco de Dados
+            const { error: dbError } = await supabase.from('produtos').update({ imagem: null }).eq('imagem', url);
+            if (dbError) throw dbError;
             
-            if (error) throw error;
+            // 2. NOVO: Se a imagem estiver no nosso Supabase Storage, apaga o arquivo físico!
+            if (url.includes('supabase.co/storage/v1/object/public/produtos/')) {
+                // Pega apenas o nome do arquivo final (ex: brownie_1711982736.webp)
+                const nomeArquivo = url.split('/').pop(); 
+                
+                const { error: storageError } = await supabase.storage.from('produtos').remove([nomeArquivo]);
+                if (storageError) console.error("Erro ao apagar arquivo físico:", storageError);
+            }
             
-            // Recarrega a galeria e a lista de produtos lá no fundo
             abrirGaleria();
             carregarProdutos();
             
-            alert('Imagem apagada com sucesso!');
+            alert('Imagem apagada com sucesso e espaço libertado no servidor!');
         } catch (e) {
             alert('Erro ao apagar imagem: ' + e.message);
         }
