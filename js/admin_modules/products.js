@@ -231,33 +231,30 @@ export async function salvarProduto(e) {
         if (urlInput && urlInput.value.trim() !== '') {
             fotoUrlFinal = urlInput.value.trim();
         } 
-        // PRIORIDADE 2: Se ela fez o upload e cortou a foto, mandamos direto para o Supabase Storage!
+        // PRIORIDADE 2: Upload para o ImgBB (com compressão WebP!)
         else if (window.croppedBlob) {
-            btn.innerText = "Enviando para Nuvem Própria...";
+            btn.innerText = "Enviando para o ImgBB...";
             
-            // 1. Cria um nome único para a imagem baseado na data atual
-            const nomeArquivo = `brownie_${Date.now()}.webp`;
+            // A chave da API do ImgBB do seu projeto
+            const apiKey = '51c759a4e8edeca1edb1d902d8e2c27a'; 
             
-            // 2. Faz o upload da imagem para o bucket 'produtos'
-            const { data: uploadData, error: uploadError } = await supabase.storage
-                .from('produtos')
-                .upload(nomeArquivo, window.croppedBlob, {
-                    cacheControl: '3600',
-                    upsert: false,
-                    contentType: 'image/webp'
-                });
-                
-            if (uploadError) {
-                console.error("Erro no upload:", uploadError);
-                throw new Error("Falha ao salvar a imagem no servidor. Verifique se criou o bucket 'produtos' e se ele é Público.");
+            // Prepara o "pacote" com a foto recortada
+            const formData = new FormData();
+            formData.append('image', window.croppedBlob, `brownie_${Date.now()}.webp`);
+            
+            // Dispara para os servidores do ImgBB
+            const resposta = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            const dados = await resposta.json();
+            
+            if (dados.success) {
+                fotoUrlFinal = dados.data.url; // Pega o link público gerado
+            } else {
+                throw new Error("Falha ao salvar a imagem no ImgBB: " + (dados.error?.message || "Erro desconhecido"));
             }
-            
-            // 3. Pede ao Supabase o link público dessa imagem que acabamos de subir
-            const { data: publicUrlData } = supabase.storage
-                .from('produtos')
-                .getPublicUrl(nomeArquivo);
-                
-            fotoUrlFinal = publicUrlData.publicUrl;
             
         } 
         // TRATAMENTO DE ERRO: Se ela escolheu um arquivo mas não cortou

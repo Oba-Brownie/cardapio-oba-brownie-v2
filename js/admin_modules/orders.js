@@ -78,18 +78,70 @@ function tocarSom(novoPedido) {
 // === CARREGAMENTO E LISTAGEM ===
 export async function carregarPedidosDoBanco() {
     const colNovos = document.getElementById('lista-novos');
-    if(colNovos && colNovos.innerHTML === '') colNovos.innerHTML = '<div style="text-align:center; padding:10px; color:#999"><i class="fas fa-spinner fa-spin"></i></div>';
+    if(colNovos && colNovos.innerHTML === '') {
+        colNovos.innerHTML = '<div style="text-align:center; padding:10px; color:#999"><i class="fas fa-spinner fa-spin"></i></div>';
+    }
 
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0); 
-
+    // 1. Removemos o limite de data. Agora busca TODOS os pedidos que estão abertos no banco.
     const { data } = await supabase.from('pedidos')
         .select('*')
-        .gte('data', hoje.toISOString())
         .neq('status', 'Arquivado')
-        .order('data', { ascending: true }); 
-        
-    distribuirNasColunas(data || []);
+        .order('data', { ascending: true });
+
+    const todosPedidos = data || [];
+
+    // 2. Marcamos que dia é "hoje" (zerando as horas para comparar dias inteiros)
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const tempoHoje = hoje.getTime();
+
+    let pedidosParaMostrar = [];
+    let pedidosParaArquivar = [];
+
+    // 3. Agrupamos os pedidos de acordo com a data em que foram feitos
+    const pedidosPorDia = {};
+    todosPedidos.forEach(p => {
+        // Usa a data do pedido e zera a hora para encaixar no "grupo" do dia
+        const dataPedido = new Date(p.data);
+        dataPedido.setHours(0, 0, 0, 0);
+        const key = dataPedido.getTime();
+
+        if (!pedidosPorDia[key]) pedidosPorDia[key] = [];
+        pedidosPorDia[key].push(p);
+    });
+
+    // 4. A Nova Lógica de Arquivamento (A "Trava de Segurança")
+    for (const [keyDataStr, pedidosDoDia] of Object.entries(pedidosPorDia)) {
+        const dataDoGrupo = parseInt(keyDataStr);
+
+        if (dataDoGrupo >= tempoHoje) {
+            // CENÁRIO A: Pedidos de HOJE (ou agendados pro futuro). 
+            // Mostra sempre, mesmo que ela já tenha entregue todos.
+            pedidosParaMostrar.push(...pedidosDoDia);
+        } else {
+            // CENÁRIO B: Pedidos de ONTEM (ou dias anteriores).
+            // Verifica se ABSOLUTAMENTE TODOS desse dia específico foram finalizados.
+            const todosEntregues = pedidosDoDia.every(p => p.status === 'Concluido' || p.status === 'Cancelado');
+
+            if (todosEntregues) {
+                // Missão cumprida! Expediente daquele dia pode ser fechado e removido da tela.
+                pedidosParaArquivar.push(...pedidosDoDia);
+            } else {
+                // Alerta! Tem pedido atrasado. Trava todos os pedidos daquele dia na tela principal.
+                pedidosParaMostrar.push(...pedidosDoDia);
+            }
+        }
+    }
+
+    // 5. Faz a faxina no banco de dados de forma invisível (sem travar a tela da vendedora)
+    if (pedidosParaArquivar.length > 0) {
+        const idsParaArquivar = pedidosParaArquivar.map(p => p.id);
+        // Atualiza o status deles para 'Arquivado' para que no próximo carregamento nem precisem ser baixados
+        supabase.from('pedidos').update({ status: 'Arquivado' }).in('id', idsParaArquivar);
+    }
+
+    // 6. Renderiza nas colunas apenas a lista filtrada
+    distribuirNasColunas(pedidosParaMostrar);
 }
 
 function distribuirNasColunas(pedidos) {
