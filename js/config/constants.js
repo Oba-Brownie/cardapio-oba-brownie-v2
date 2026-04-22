@@ -20,6 +20,7 @@ const RAW_BAIRROS = [
     { nome: "Brasil Novo (vila Ildemar)", taxa: 9.00 }, 
     { nome: "Capeloza", taxa: 7.00 }, 
     { nome: "Centro", taxa: 5.00 }, 
+    { nome: "Cikel", taxa: 6.00},
     { nome: "Colinas Park", taxa: 3.00 }, 
     { nome: "Getat", taxa: 6.00 }, 
     { nome: "Jacu", taxa: 6.00 }, 
