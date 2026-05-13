@@ -294,6 +294,10 @@
         margin-top: 15px;
     }
 
+    .cart-section {
+        order: -1;
+    }
+
     /* 2. Força largura total para cada bloco */
     .cart-section, .customer-details {
         width: 100%;

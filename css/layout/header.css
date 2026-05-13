@@ -18,7 +18,7 @@ header {
     height: 102px;
     width: 102px;
     padding-top: 28px;
-    object-fit: cover;
+    object-fit: contain;
     filter: drop-shadow(0 8px 14px rgba(143, 47, 89, 0.22));
 }
 
@@ -60,8 +60,18 @@ header {
 }
 
 @media (max-width: 600px) {
+    header {
+        height: 84px;
+    }
+
+    .header-logo-small {
+        width: 118px;
+        height: 118px;
+        padding-top: 20px;
+    }
+
     .top-info-container {
-        margin-top: 4px;
+        margin-top: 10px;
         margin-bottom: 14px;
         gap: 8px;
     }

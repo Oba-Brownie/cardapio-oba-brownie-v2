@@ -37,7 +37,7 @@
   margin-top: auto; }
 .card-destaque-add-button {
   min-height: 42px;
-  background-color: var(--color-primary);
+  background: var(--color-primary);
   color: #fffafb;
   border: none;
   border-radius: 999px;
@@ -124,7 +124,7 @@
   position: absolute;
   bottom: -11px; left: 50%;
   transform: translateX(-50%);
-  background-color: var(--color-primary);
+  background: var(--color-primary);
   color: #fffafb;
   border: 3px solid var(--color-surface-strong);
   border-radius: 50%;
@@ -169,6 +169,35 @@
   }
 
 @media (min-width: 760px) {
+  main {
+    max-width: 900px;
+  }
+
+  .destaques-carousel {
+    gap: 16px;
+  }
+
+  .card-destaque {
+    flex-basis: 280px;
+  }
+
+  .card-destaque-info h4,
+  .product-name {
+    color: var(--color-primary-strong);
+  }
+
+  .card-destaque-add-button {
+    background: var(--color-primary);
+    color: #fffafb;
+    opacity: 1;
+  }
+
+  .add-button {
+    background: var(--color-primary);
+    color: #fffafb;
+    opacity: 1;
+  }
+
   .product-item {
     padding: 16px 18px;
   }

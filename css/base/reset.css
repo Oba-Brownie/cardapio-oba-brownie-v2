@@ -110,6 +110,10 @@ textarea,
 
 /* --- AJUSTE MOBILE (ALARGAR O LAYOUT) --- */
 @media (max-width: 600px) {
+    body {
+        padding-top: 84px;
+    }
+
     main {
         width: 100%;
         padding: 8px 12px;
