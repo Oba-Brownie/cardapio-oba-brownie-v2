@@ -4,6 +4,8 @@
 /* ================================================= */
 
 import { supabase } from '../config/supabase-config.js';
+import { escapeHTML, formatCurrencyBR, inlineJSString, safeNumber } from '../modules/utils.js';
+import { LOCAL_TEST_MODE, getMockCupons, showLocalMutationBlocked } from '../modules/local_test_mode.js';
 
 export async function carregarCupons() {
     const div = document.getElementById('lista-cupons');
@@ -11,7 +13,9 @@ export async function carregarCupons() {
     
     div.innerHTML = '<p style="text-align:center;"><i class="fas fa-spinner fa-spin"></i> Carregando cupons...</p>';
     
-    const { data, error } = await supabase.from('cupons').select('*').order('id', { ascending: false });
+    const { data, error } = LOCAL_TEST_MODE
+        ? { data: getMockCupons(), error: null }
+        : await supabase.from('cupons').select('*').order('id', { ascending: false });
     
     if (error || !data || data.length === 0) {
         div.innerHTML = '<p style="text-align:center; padding: 20px;">Nenhum cupom ativo no momento.</p>';
@@ -22,16 +26,17 @@ export async function carregarCupons() {
     
     data.forEach(c => {
         const qtdStyle = c.quantidade <= 0 ? 'color: red; font-weight: bold;' : '';
-        const qtdTexto = c.quantidade <= 0 ? 'Esgotado' : c.quantidade;
-        const minimoTexto = c.valor_minimo > 0 ? `R$ ${c.valor_minimo.toFixed(2)}` : 'Sem mínimo';
+        const qtdTexto = c.quantidade <= 0 ? 'Esgotado' : escapeHTML(c.quantidade);
+        const minimoTexto = c.valor_minimo > 0 ? `R$ ${formatCurrencyBR(c.valor_minimo)}` : 'Sem mínimo';
+        const cupomId = inlineJSString(c.id);
 
         html += `<tr>
-            <td><strong style="color: var(--primary);">${c.codigo}</strong></td>
-            <td>${c.desconto_percentual}%</td>
+            <td><strong style="color: var(--primary);">${escapeHTML(c.codigo)}</strong></td>
+            <td>${safeNumber(c.desconto_percentual)}%</td>
             <td style="font-size:0.9em; color:#666;">${minimoTexto}</td>
             <td style="${qtdStyle}">${qtdTexto}</td>
             <td>
-                <button onclick="deletarCupom(${c.id})" style="background:#ffebee; color:red; border:none; padding:8px 12px; border-radius:5px; cursor:pointer; font-weight:bold;"><i class="fas fa-trash"></i></button>
+                <button onclick="deletarCupom(${cupomId})" style="background:#ffebee; color:red; border:none; padding:8px 12px; border-radius:5px; cursor:pointer; font-weight:bold;"><i class="fas fa-trash"></i></button>
             </td>
         </tr>`;
     });
@@ -42,6 +47,12 @@ export async function carregarCupons() {
 
 export async function salvarCupom(e) {
     e.preventDefault();
+
+    if (LOCAL_TEST_MODE) {
+        showLocalMutationBlocked('Salvar cupom');
+        return;
+    }
+
     const codigo = document.getElementById('c-codigo').value.trim().toUpperCase();
     const desconto = parseFloat(document.getElementById('c-desconto').value);
     const qtd = parseInt(document.getElementById('c-qtd').value);
@@ -67,6 +78,11 @@ export async function salvarCupom(e) {
 }
 
 export async function deletarCupom(id) {
+    if (LOCAL_TEST_MODE) {
+        showLocalMutationBlocked('Exclusao de cupom');
+        return;
+    }
+
     if (confirm("Deseja apagar este cupom?")) {
         await supabase.from('cupons').delete().eq('id', id);
         carregarCupons();

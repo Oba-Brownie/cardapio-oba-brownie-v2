@@ -1,3 +1,5 @@
+import { attachImageFallbacks, DEFAULT_IMAGE_FALLBACK, escapeHTML, escapeAttribute, formatCurrencyBR, inlineJSString, sanitizeImageUrl, safeNumber } from './utils.js';
+
 let notificacaoTimeout;
 
 // === NOTIFICAÇÕES E POP-UPS ===
@@ -29,6 +31,11 @@ export function initBlackFridayPopup() {
 export function hideSplashScreen() {
     const splashScreen = document.getElementById('splash-screen');
     if (splashScreen) {
+        if (typeof window.hideObaSplashFallback === 'function') {
+            window.hideObaSplashFallback();
+            return;
+        }
+
         splashScreen.style.opacity = '0';
         splashScreen.style.transition = 'opacity 0.5s ease';
         setTimeout(() => {
@@ -40,21 +47,23 @@ export function hideSplashScreen() {
 
 // === RENDERIZAÇÃO DE PRODUTOS ===
 function generatePriceHTML(product) {
-    if (product.price === 0) {
+    const price = safeNumber(product.price);
+
+    if (price === 0) {
         return `<p class="product-price" style="color: #28a745; font-weight: bold;">Grátis</p>`;
     }
     
-    const precoOriginal = product.preco_original || product.originalPrice;
+    const precoOriginal = safeNumber(product.preco_original || product.originalPrice);
     
-    if (precoOriginal && parseFloat(precoOriginal) > product.price) {
+    if (precoOriginal && precoOriginal > price) {
         return `
             <div class="product-price-container">
-                <span class="original-price">R$ ${parseFloat(precoOriginal).toFixed(2).replace('.', ',')}</span>
-                <span class="promo-price">R$ ${product.price.toFixed(2).replace('.', ',')}</span>
+                <span class="original-price">R$ ${formatCurrencyBR(precoOriginal)}</span>
+                <span class="promo-price">R$ ${formatCurrencyBR(price)}</span>
             </div>`;
     } 
     
-    return `<p class="product-price">R$ ${product.price.toFixed(2).replace('.', ',')}</p>`;
+    return `<p class="product-price">R$ ${formatCurrencyBR(price)}</p>`;
 }
 
 export function renderProducts(products, lojaAberta, customOrder = []) {
@@ -85,17 +94,22 @@ export function renderProducts(products, lojaAberta, customOrder = []) {
             card.className = 'card-destaque';
             card.dataset.productId = product.id;
             const priceHTML = generatePriceHTML(product);
+            const productId = inlineJSString(product.id);
+            const productName = escapeHTML(product.name);
+            const productDescription = escapeHTML(product.description);
+            const productImage = escapeAttribute(sanitizeImageUrl(product.image));
 
             card.innerHTML = `
-                <img src="${product.image}" alt="${product.name}" loading="lazy">
+                <img src="${productImage}" alt="${productName}" loading="lazy" decoding="async" data-fallback-src="${DEFAULT_IMAGE_FALLBACK}">
                 <div class="card-destaque-info">
-                    <h4>${product.name}</h4>
-                    <p>${product.description}</p>
+                    <h4>${productName}</h4>
+                    <p>${productDescription}</p>
                     <div class="card-destaque-footer">
                         ${priceHTML}
-                        <button class="card-destaque-add-button" onclick="addToCart('${product.id}')">Adicionar</button>
+                        <button class="card-destaque-add-button" onclick="addToCart(${productId})">Adicionar</button>
                     </div>
                 </div>`;
+            attachImageFallbacks(card);
             carousel.appendChild(card);
         });
         destaquesContainer.appendChild(title);
@@ -142,17 +156,21 @@ export function renderProducts(products, lojaAberta, customOrder = []) {
             productsByCategory[categoria].forEach(product => {
                 const productElement = document.createElement('div');
                 const priceHTML = generatePriceHTML(product);
+                const productId = inlineJSString(product.id);
+                const productName = escapeHTML(product.name);
+                const productDescription = escapeHTML(product.description);
+                const productImage = escapeAttribute(sanitizeImageUrl(product.image));
 
                 if (!lojaAberta) {
                     productElement.className = 'product-item esgotado';
                     productElement.innerHTML = `
                         <div class="product-info">
-                            <h4 class="product-name">${product.name}</h4>
-                            <p class="product-description">${product.description}</p>
+                            <h4 class="product-name">${productName}</h4>
+                            <p class="product-description">${productDescription}</p>
                             ${priceHTML}
                         </div>
                         <div class="product-image-container">
-                            <img src="${product.image}" alt="${product.name}" class="product-image" loading="lazy">
+                            <img src="${productImage}" alt="${productName}" class="product-image" loading="lazy" decoding="async" data-fallback-src="${DEFAULT_IMAGE_FALLBACK}">
                             <button class="add-button-esgotado" disabled>Fechado</button>
                         </div>`;
                 } else {
@@ -160,15 +178,16 @@ export function renderProducts(products, lojaAberta, customOrder = []) {
                     productElement.dataset.productId = product.id;
                     productElement.innerHTML = `
                         <div class="product-info">
-                            <h4 class="product-name">${product.name}</h4>
-                            <p class="product-description">${product.description}</p>
+                            <h4 class="product-name">${productName}</h4>
+                            <p class="product-description">${productDescription}</p>
                             ${priceHTML}
                         </div>
                         <div class="product-image-container">
-                            <img src="${product.image}" alt="${product.name}" class="product-image" loading="lazy">
-                            <button class="add-button" onclick="addToCart('${product.id}')">+</button>
+                            <img src="${productImage}" alt="${productName}" class="product-image" loading="lazy" decoding="async" data-fallback-src="${DEFAULT_IMAGE_FALLBACK}">
+                            <button class="add-button" onclick="addToCart(${productId})">+</button>
                         </div>`;
                 }
+                attachImageFallbacks(productElement);
                 productListContainer.appendChild(productElement);
             });
         }
@@ -189,18 +208,22 @@ export function renderProducts(products, lojaAberta, customOrder = []) {
             soldOutProducts.forEach(product => {
                 const productElement = document.createElement('div');
                 const priceHTML = generatePriceHTML(product);
+                const productName = escapeHTML(product.name);
+                const productDescription = escapeHTML(product.description);
+                const productImage = escapeAttribute(sanitizeImageUrl(product.image));
 
                 productElement.className = 'product-item esgotado';
                 productElement.innerHTML = `
                     <div class="product-info">
-                        <h4 class="product-name">${product.name}</h4>
-                        <p class="product-description">${product.description}</p>
+                        <h4 class="product-name">${productName}</h4>
+                        <p class="product-description">${productDescription}</p>
                         ${priceHTML}
                     </div>
                     <div class="product-image-container">
-                        <img src="${product.image}" alt="${product.name}" class="product-image" loading="lazy">
+                        <img src="${productImage}" alt="${productName}" class="product-image" loading="lazy" decoding="async" data-fallback-src="${DEFAULT_IMAGE_FALLBACK}">
                         <button class="add-button-esgotado" disabled>Esgotado</button>
                     </div>`;
+                attachImageFallbacks(productElement);
                 productListContainer.appendChild(productElement);
             });
         }

@@ -1,7 +1,12 @@
 import { supabase } from '../config/supabase-config.js';
+import { LOCAL_TEST_MODE, getMockConfigLoja, getMockProductsPublic } from './local_test_mode.js';
 
 // === CONFIGURAÇÕES DA LOJA ===
 export async function fetchConfiguracaoLoja() {
+    if (LOCAL_TEST_MODE) {
+        return getMockConfigLoja();
+    }
+
     try {
         const { data, error } = await supabase
             .from('config_loja')
@@ -43,21 +48,42 @@ export async function fetchConfiguracaoLoja() {
     }
 }
 
-// === BUSCA DE PRODUTOS (COM CACHE) ===
-export async function fetchProducts() {
-    // 1. Tenta pegar do cache primeiro
+const PRODUCTS_CACHE_TTL_MINUTES = 2;
+
+function getCachedProducts() {
     const cache = sessionStorage.getItem('oba_produtos_cache');
+    if (!cache) return null;
+
+    try {
+        return JSON.parse(cache);
+    } catch {
+        sessionStorage.removeItem('oba_produtos_cache');
+        sessionStorage.removeItem('oba_produtos_time');
+        return null;
+    }
+}
+
+function isProductsCacheFresh() {
     const cacheTime = sessionStorage.getItem('oba_produtos_time');
-    
-    if (cache && cacheTime) {
-        const diffMinutes = (Date.now() - parseInt(cacheTime)) / 60000;
-        // Usa o cache visual se tiver menos de 15 minutos
-        if (diffMinutes < 15) {
-            return JSON.parse(cache);
-        }
+    if (!cacheTime) return false;
+
+    const diffMinutes = (Date.now() - parseInt(cacheTime, 10)) / 60000;
+    return diffMinutes < PRODUCTS_CACHE_TTL_MINUTES;
+}
+
+// === BUSCA DE PRODUTOS (COM CACHE DE FALLBACK) ===
+export async function fetchProducts(options = {}) {
+    if (LOCAL_TEST_MODE) {
+        return getMockProductsPublic();
     }
 
-    // 2. Se não tem cache ou expirou, busca no banco
+    const forceRefresh = options.forceRefresh === true;
+    const cachedProducts = getCachedProducts();
+
+    if (!forceRefresh && cachedProducts && isProductsCacheFresh()) {
+        return cachedProducts;
+    }
+
     try {
         const { data, error } = await supabase
             .from('produtos')
@@ -88,6 +114,6 @@ export async function fetchProducts() {
 
     } catch (error) {
         console.error("Erro ao buscar produtos:", error);
-        return [];
+        return cachedProducts || [];
     }
 }

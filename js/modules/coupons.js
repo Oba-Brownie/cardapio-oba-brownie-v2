@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase-config.js';
 import { getCurrentCartValues } from './cart_ui.js';
+import { LOCAL_TEST_MODE, findMockCupom } from './local_test_mode.js';
 
 window.cupomAplicado = null;
 
@@ -27,7 +28,17 @@ export async function aplicarCupom() {
     btn.disabled = true;
 
     try {
-        const { data, error } = await supabase.from('cupons').select('*').eq('codigo', codigo).single();
+        let data;
+        let error;
+
+        if (LOCAL_TEST_MODE) {
+            data = findMockCupom(codigo);
+            error = data ? null : new Error('Cupom inválido ou expirado.');
+        } else {
+            const response = await supabase.from('cupons').select('*').eq('codigo', codigo).single();
+            data = response.data;
+            error = response.error;
+        }
 
         if (error || !data) throw new Error("Cupom inválido ou expirado.");
         if (data.quantidade <= 0) throw new Error("Ops! Este cupom já esgotou.");

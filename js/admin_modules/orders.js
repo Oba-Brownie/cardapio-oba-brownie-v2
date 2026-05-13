@@ -4,6 +4,8 @@
 /* ================================================= */
 
 import { supabase } from '../config/supabase-config.js';
+import { escapeHTML, formatCurrencyBR, inlineJSString, safeCssToken, safeNumber } from '../modules/utils.js';
+import { LOCAL_TEST_MODE, findMockPedido, getMockPedidos, showLocalMutationBlocked } from '../modules/local_test_mode.js';
 
 // === UTILITÁRIOS DE DATA E HORA ===
 function corrigirDataUTC(dataString) {
@@ -24,6 +26,18 @@ function formatarDataBR(dataString) {
     const dataUTC = corrigirDataUTC(dataString);
     if (!dataUTC) return '--/--/----';
     return new Date(dataUTC).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+}
+
+function getClienteDados(pedido) {
+    return pedido && pedido.cliente_dados && typeof pedido.cliente_dados === 'object' ? pedido.cliente_dados : {};
+}
+
+function getStatusClass(status) {
+    return safeCssToken(status === 'Visto' ? 'Entrega' : String(status ?? '').replace(/\s+/g, ''));
+}
+
+function getPrimeiroNome(nome) {
+    return String(nome || 'Cliente').trim().split(/\s+/)[0] || 'Cliente';
 }
 
 // === CONTROLO DE ECRÃ LIGADO (WAKE LOCK) ===
@@ -47,6 +61,11 @@ document.addEventListener('visibilitychange', () => {
 
 // === MONITORIZAÇÃO EM TEMPO REAL ===
 export async function iniciarMonitor() {
+    if (LOCAL_TEST_MODE) {
+        carregarPedidosDoBanco();
+        return;
+    }
+
     if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
         Notification.requestPermission();
     }
@@ -82,66 +101,26 @@ export async function carregarPedidosDoBanco() {
         colNovos.innerHTML = '<div style="text-align:center; padding:10px; color:#999"><i class="fas fa-spinner fa-spin"></i></div>';
     }
 
-    // 1. Removemos o limite de data. Agora busca TODOS os pedidos que estão abertos no banco.
+    if (LOCAL_TEST_MODE) {
+        distribuirNasColunas(getMockPedidos());
+        return;
+    }
+
+    const inicioHoje = new Date();
+    inicioHoje.setHours(0, 0, 0, 0);
+
+    const inicioAmanha = new Date(inicioHoje);
+    inicioAmanha.setDate(inicioAmanha.getDate() + 1);
+
+    // Mostra somente pedidos do dia atual no kanban. Pedidos antigos ficam no histórico.
     const { data } = await supabase.from('pedidos')
         .select('*')
         .neq('status', 'Arquivado')
+        .gte('data', inicioHoje.toISOString())
+        .lt('data', inicioAmanha.toISOString())
         .order('data', { ascending: true });
 
-    const todosPedidos = data || [];
-
-    // 2. Marcamos que dia é "hoje" (zerando as horas para comparar dias inteiros)
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    const tempoHoje = hoje.getTime();
-
-    let pedidosParaMostrar = [];
-    let pedidosParaArquivar = [];
-
-    // 3. Agrupamos os pedidos de acordo com a data em que foram feitos
-    const pedidosPorDia = {};
-    todosPedidos.forEach(p => {
-        // Usa a data do pedido e zera a hora para encaixar no "grupo" do dia
-        const dataPedido = new Date(p.data);
-        dataPedido.setHours(0, 0, 0, 0);
-        const key = dataPedido.getTime();
-
-        if (!pedidosPorDia[key]) pedidosPorDia[key] = [];
-        pedidosPorDia[key].push(p);
-    });
-
-    // 4. A Nova Lógica de Arquivamento (A "Trava de Segurança")
-    for (const [keyDataStr, pedidosDoDia] of Object.entries(pedidosPorDia)) {
-        const dataDoGrupo = parseInt(keyDataStr);
-
-        if (dataDoGrupo >= tempoHoje) {
-            // CENÁRIO A: Pedidos de HOJE (ou agendados pro futuro). 
-            // Mostra sempre, mesmo que ela já tenha entregue todos.
-            pedidosParaMostrar.push(...pedidosDoDia);
-        } else {
-            // CENÁRIO B: Pedidos de ONTEM (ou dias anteriores).
-            // Verifica se ABSOLUTAMENTE TODOS desse dia específico foram finalizados.
-            const todosEntregues = pedidosDoDia.every(p => p.status === 'Concluido' || p.status === 'Cancelado');
-
-            if (todosEntregues) {
-                // Missão cumprida! Expediente daquele dia pode ser fechado e removido da tela.
-                pedidosParaArquivar.push(...pedidosDoDia);
-            } else {
-                // Alerta! Tem pedido atrasado. Trava todos os pedidos daquele dia na tela principal.
-                pedidosParaMostrar.push(...pedidosDoDia);
-            }
-        }
-    }
-
-    // 5. Faz a faxina no banco de dados de forma invisível (sem travar a tela da vendedora)
-    if (pedidosParaArquivar.length > 0) {
-        const idsParaArquivar = pedidosParaArquivar.map(p => p.id);
-        // Atualiza o status deles para 'Arquivado' para que no próximo carregamento nem precisem ser baixados
-        supabase.from('pedidos').update({ status: 'Arquivado' }).in('id', idsParaArquivar);
-    }
-
-    // 6. Renderiza nas colunas apenas a lista filtrada
-    distribuirNasColunas(pedidosParaMostrar);
+    distribuirNasColunas(data || []);
 }
 
 function distribuirNasColunas(pedidos) {
@@ -177,56 +156,61 @@ function distribuirNasColunas(pedidos) {
 
 function criarCardHTML(p) {
     const div = document.createElement('div');
-    const statusClass = p.status === 'Visto' ? 'Entrega' : p.status;
+    const statusClass = getStatusClass(p.status);
+    const clienteDados = getClienteDados(p);
+    const idArg = inlineJSString(p.id);
+    const primeiroNome = escapeHTML(getPrimeiroNome(p.cliente_nome));
+    const tipoPedido = clienteDados.tipo === 'pickup' ? 'Retirada' : 'Delivery';
+    const tipoIcone = clienteDados.tipo === 'pickup' ? 'fa-walking' : 'fa-motorcycle';
     div.className = `card-pedido status-${statusClass}`;
     
     const hora = formatarHoraBR(p.data);
     
     let itensHTML = '';
     if (Array.isArray(p.itens)) {
-        itensHTML = p.itens.slice(0, 2).map(i => `<li><strong>${i.quantity}x</strong> ${i.name}</li>`).join('');
+        itensHTML = p.itens.slice(0, 2).map(i => `<li><strong>${safeNumber(i.quantity)}x</strong> ${escapeHTML(i.name)}</li>`).join('');
         if (p.itens.length > 2) itensHTML += `<li style="color:#888; font-style:italic">+ ${p.itens.length - 2} itens...</li>`;
     }
     
     let botoesAcao = '';
     if (p.status === 'Novo') {
-        botoesAcao = `<button onclick="marcarComoEnviadoEAvisarCliente('${p.id}')" class="btn-action btn-move-entrega">Enviar <i class="fas fa-motorcycle"></i></button>`;
+        botoesAcao = `<button onclick="marcarComoEnviadoEAvisarCliente(${idArg})" class="btn-action btn-move-entrega">Enviar <i class="fas fa-motorcycle"></i></button>`;
     } else if (p.status === 'Em Entrega' || p.status === 'Visto') {
-        botoesAcao = `<button onclick="mudarStatus('${p.id}', 'Concluido')" class="btn-action btn-move-concluido">Concluir <i class="fas fa-check"></i></button>`;
+        botoesAcao = `<button onclick="mudarStatus(${idArg}, 'Concluido')" class="btn-action btn-move-concluido">Concluir <i class="fas fa-check"></i></button>`;
     }
 
     div.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:5px;">
             <div>
-                <strong style="font-size:1.1em">${p.cliente_nome.split(' ')[0]}</strong>
+                <strong style="font-size:1.1em">${primeiroNome}</strong>
                 <div style="font-size:0.8em; color:#888">${hora}</div>
             </div>
             
             <div style="display:flex; gap:5px">
-                <button onclick="enviarWhatsAppEntregador('${p.id}')" title="Mandar p/ Entregador" style="background:#e8f5e9; border:none; width:32px; height:32px; border-radius:50%; cursor:pointer; color:#2e7d32;">
+                <button onclick="enviarWhatsAppEntregador(${idArg})" title="Mandar p/ Entregador" style="background:#e8f5e9; border:none; width:32px; height:32px; border-radius:50%; cursor:pointer; color:#2e7d32;">
                     <i class="fab fa-whatsapp"></i>
                 </button>
-                <button onclick="verDetalhesPedido('${p.id}')" title="Ver Detalhes" style="background:#e3f2fd; border:none; width:32px; height:32px; border-radius:50%; cursor:pointer; color:#1976d2;">
+                <button onclick="verDetalhesPedido(${idArg})" title="Ver Detalhes" style="background:#e3f2fd; border:none; width:32px; height:32px; border-radius:50%; cursor:pointer; color:#1976d2;">
                     <i class="fas fa-eye"></i>
                 </button>
-                <button onclick="imprimirPedido('${p.id}')" title="Imprimir" style="background:#eee; border:none; width:32px; height:32px; border-radius:50%; cursor:pointer; color:#333;">
+                <button onclick="imprimirPedido(${idArg})" title="Imprimir" style="background:#eee; border:none; width:32px; height:32px; border-radius:50%; cursor:pointer; color:#333;">
                     <i class="fas fa-print"></i>
                 </button>
-                <button onclick="excluirPedido('${p.id}')" title="Excluir Pedido" style="background:#ffebee; border:none; width:32px; height:32px; border-radius:50%; cursor:pointer; color:#c62828;">
+                <button onclick="excluirPedido(${idArg})" title="Excluir Pedido" style="background:#ffebee; border:none; width:32px; height:32px; border-radius:50%; cursor:pointer; color:#c62828;">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
         </div>
 
         <div style="font-size:0.85em; background:#f9f9f9; padding:4px; border-radius:4px; margin-bottom:5px">
-            <i class="fas ${p.cliente_dados.tipo === 'pickup' ? 'fa-walking' : 'fa-motorcycle'}"></i> 
-            ${p.cliente_dados.tipo === 'pickup' ? 'Retirada' : 'Delivery'}
+            <i class="fas ${tipoIcone}"></i>
+            ${tipoPedido}
         </div>
 
         <ul style="padding-left:20px; margin:5px 0; font-size:0.9em; color:#444">${itensHTML}</ul>
         
         <div style="margin-top:8px; font-weight:bold; text-align:right; font-size:1em; color:var(--dark)">
-            R$ ${parseFloat(p.total).toFixed(2).replace('.', ',')}
+            R$ ${formatCurrencyBR(p.total)}
         </div>
         
         <div class="card-actions" style="margin-top:10px">${botoesAcao}</div>`;
@@ -235,11 +219,21 @@ function criarCardHTML(p) {
 
 // === AÇÕES DO PEDIDO ===
 export async function mudarStatus(id, novoStatus) {
+    if (LOCAL_TEST_MODE) {
+        showLocalMutationBlocked('Alteracao de status do pedido');
+        return;
+    }
+
     await supabase.from('pedidos').update({ status: novoStatus }).eq('id', id);
     carregarPedidosDoBanco();
 }
 
 export async function excluirPedido(id) {
+    if (LOCAL_TEST_MODE) {
+        showLocalMutationBlocked('Exclusao de pedido');
+        return;
+    }
+
     if(confirm("Tem certeza que deseja EXCLUIR este pedido? Essa ação não pode ser desfeita.")) {
         const { error } = await supabase.from('pedidos').delete().eq('id', id);
         if(error) alert("Erro ao excluir: " + error.message);
@@ -248,6 +242,11 @@ export async function excluirPedido(id) {
 }
 
 export async function marcarComoEnviadoEAvisarCliente(idPedido) {
+    if (LOCAL_TEST_MODE) {
+        showLocalMutationBlocked('Envio/alteracao de pedido');
+        return;
+    }
+
     await supabase.from('pedidos').update({ status: 'Em Entrega' }).eq('id', idPedido);
     carregarPedidosDoBanco(); 
 
@@ -285,43 +284,51 @@ export async function verDetalhesPedido(id) {
     conteudo.innerHTML = '<div style="text-align:center; padding:30px"><i class="fas fa-spinner fa-spin fa-2x"></i><p>Buscando dados...</p></div>';
 
     try {
-        const { data: p, error } = await supabase.from('pedidos').select('*').eq('id', id).single();
+        const { data: p, error } = LOCAL_TEST_MODE
+            ? { data: findMockPedido(id), error: null }
+            : await supabase.from('pedidos').select('*').eq('id', id).single();
         if (error || !p) throw new Error("Pedido não encontrado");
 
+        const clienteDados = getClienteDados(p);
         const dataFormatada = formatarDataBR(p.data) + ' às ' + formatarHoraBR(p.data);
-        document.getElementById('det-titulo').innerText = `Pedido #${p.id.toString().slice(0,4)}`;
-        document.getElementById('det-status').innerText = p.status;
-        document.getElementById('det-status').className = `badge-status badge-${p.status === 'Visto' ? 'Entrega' : p.status.replace(' ','')}`;
+        document.getElementById('det-titulo').innerText = `Pedido #${String(p.id).slice(0,4)}`;
+        document.getElementById('det-status').innerText = p.status || '--';
+        document.getElementById('det-status').className = `badge-status badge-${getStatusClass(p.status)}`;
         document.getElementById('btn-imprimir-modal').onclick = () => imprimirPedido(p.id);
 
-        let itensHtml = p.itens.map(i => `
+        let itensHtml = (Array.isArray(p.itens) ? p.itens : []).map(i => `
             <div class="item-modal">
-                <span><strong>${i.quantity}x</strong> ${i.name}</span>
-                <span>R$ ${(i.price * i.quantity).toFixed(2).replace('.', ',')}</span>
+                <span><strong>${safeNumber(i.quantity)}x</strong> ${escapeHTML(i.name)}</span>
+                <span>R$ ${formatCurrencyBR(safeNumber(i.price) * safeNumber(i.quantity))}</span>
             </div>`).join('');
+
+        const pagamento = escapeHTML(clienteDados.pagamento || '--');
+        const troco = clienteDados.troco ? ` (Troco: ${escapeHTML(clienteDados.troco)})` : '';
+        const endereco = escapeHTML(clienteDados.endereco || '');
+        const observacao = escapeHTML(clienteDados.obs || '');
 
         conteudo.innerHTML = `
             <div class="detalhes-grid">
-                <div><span class="det-label">Cliente</span><span class="det-valor">${p.cliente_nome}</span></div>
-                <div><span class="det-label">Telefone</span><span class="det-valor">${p.cliente_dados.telefone || '--'}</span></div>
+                <div><span class="det-label">Cliente</span><span class="det-valor">${escapeHTML(p.cliente_nome)}</span></div>
+                <div><span class="det-label">Telefone</span><span class="det-valor">${escapeHTML(clienteDados.telefone || '--')}</span></div>
                 <div><span class="det-label">Data</span><span class="det-valor">${dataFormatada}</span></div>
-                <div><span class="det-label">Pagamento</span><span class="det-valor">${p.cliente_dados.pagamento} ${p.cliente_dados.troco ? '(Troco: '+p.cliente_dados.troco+')' : ''}</span></div>
+                <div><span class="det-label">Pagamento</span><span class="det-valor">${pagamento}${troco}</span></div>
             </div>
-            <div style="background:${p.cliente_dados.tipo === 'delivery' ? '#fff8e1' : '#e3f2fd'}; padding:10px; border-radius:6px; border:1px solid #ddd; margin-bottom:15px;">
-                <i class="fas ${p.cliente_dados.tipo === 'delivery' ? 'fa-motorcycle' : 'fa-walking'}"></i>
-                <strong>${p.cliente_dados.tipo === 'delivery' ? 'Delivery' : 'Retirada no Local'}</strong>
-                ${p.cliente_dados.tipo === 'delivery' ? `<br><small>${p.cliente_dados.endereco}</small>` : ''}
+            <div style="background:${clienteDados.tipo === 'delivery' ? '#fff8e1' : '#e3f2fd'}; padding:10px; border-radius:6px; border:1px solid #ddd; margin-bottom:15px;">
+                <i class="fas ${clienteDados.tipo === 'delivery' ? 'fa-motorcycle' : 'fa-walking'}"></i>
+                <strong>${clienteDados.tipo === 'delivery' ? 'Delivery' : 'Retirada no Local'}</strong>
+                ${clienteDados.tipo === 'delivery' ? `<br><small>${endereco}</small>` : ''}
             </div>
             <span class="det-label">Itens:</span>
             <div class="lista-itens-modal">${itensHtml}</div>
-            ${p.cliente_dados.obs ? `<div style="background:#ffebee; color:#c62828; padding:10px; border-radius:5px; margin-bottom:15px; font-weight:bold;">⚠️ Obs: ${p.cliente_dados.obs}</div>` : ''}
+            ${observacao ? `<div style="background:#ffebee; color:#c62828; padding:10px; border-radius:5px; margin-bottom:15px; font-weight:bold;">⚠️ Obs: ${observacao}</div>` : ''}
             <div style="text-align:right; font-size:1.2em; border-top:1px solid #eee; padding-top:10px;">
                 <span class="det-label" style="display:inline">Total:</span>
-                <strong style="color:var(--dark)">R$ ${parseFloat(p.total).toFixed(2).replace('.', ',')}</strong>
+                <strong style="color:var(--dark)">R$ ${formatCurrencyBR(p.total)}</strong>
             </div>
         `;
     } catch (e) {
-        conteudo.innerHTML = `<p style="color:red; text-align:center">Erro: ${e.message}</p>`;
+        conteudo.innerHTML = `<p style="color:red; text-align:center">Erro: ${escapeHTML(e.message)}</p>`;
     }
 }
 
@@ -330,6 +337,11 @@ export function fecharModalDetalhes() {
 }
 
 export function enviarWhatsAppEntregador(idPedido) {
+    if (LOCAL_TEST_MODE) {
+        alert('Mensagem simulada localmente. Nenhum WhatsApp foi aberto.');
+        return;
+    }
+
     supabase.from('pedidos').select('*').eq('id', idPedido).single()
     .then(({ data: p, error }) => {
         if(error || !p) return alert("Erro ao carregar pedido.");
@@ -404,25 +416,29 @@ export function enviarWhatsAppEntregador(idPedido) {
 }
 
 export function imprimirPedido(idPedido) {
-    supabase.from('pedidos').select('*').eq('id', idPedido).single()
-    .then(({ data: p, error }) => {
+    const pedidoPromise = LOCAL_TEST_MODE
+        ? Promise.resolve({ data: findMockPedido(idPedido), error: null })
+        : supabase.from('pedidos').select('*').eq('id', idPedido).single();
+
+    pedidoPromise.then(({ data: p, error }) => {
         if(error || !p) return alert("Erro ao carregar pedido.");
         
+        const clienteDados = getClienteDados(p);
         const dataFormatada = formatarDataBR(p.data) + ' ' + formatarHoraBR(p.data);
         let itensHtml = '';
-        p.itens.forEach(item => {
+        (Array.isArray(p.itens) ? p.itens : []).forEach(item => {
             itensHtml += `
                 <div class="item-line">
-                    <span class="qty">${item.quantity}x</span>
-                    <span class="name">${item.name}</span>
-                    <span class="price">R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')}</span>
+                    <span class="qty">${safeNumber(item.quantity)}x</span>
+                    <span class="name">${escapeHTML(item.name)}</span>
+                    <span class="price">R$ ${formatCurrencyBR(safeNumber(item.price) * safeNumber(item.quantity))}</span>
                 </div>`;
         });
 
         const cupomHtml = `
             <html>
             <head>
-                <title>Pedido #${p.id}</title>
+                <title>Pedido #${escapeHTML(p.id)}</title>
                 <style>
                     body { font-family: 'Courier New', monospace; width: 300px; margin: 0; padding: 10px; color: #000; }
                     .header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
@@ -439,21 +455,21 @@ export function imprimirPedido(idPedido) {
             <body>
                 <div class="header"><h2>OBA BROWNIE</h2><small>${dataFormatada}</small></div>
                 <div class="info">
-                    <strong>Cliente:</strong> ${p.cliente_nome}<br>
-                    <strong>Tel:</strong> ${p.cliente_dados.telefone || '--'}<br>
-                    <strong>Tipo:</strong> ${p.cliente_dados.tipo === 'pickup' ? 'RETIRADA' : 'DELIVERY'}
+                    <strong>Cliente:</strong> ${escapeHTML(p.cliente_nome)}<br>
+                    <strong>Tel:</strong> ${escapeHTML(clienteDados.telefone || '--')}<br>
+                    <strong>Tipo:</strong> ${clienteDados.tipo === 'pickup' ? 'RETIRADA' : 'DELIVERY'}
                 </div>
-                ${p.cliente_dados.tipo === 'delivery' ? `<div class="info"><strong>Endereço:</strong><br>${p.cliente_dados.endereco}</div>` : ''}
+                ${clienteDados.tipo === 'delivery' ? `<div class="info"><strong>Endereço:</strong><br>${escapeHTML(clienteDados.endereco)}</div>` : ''}
                 <div class="divider"></div>
                 ${itensHtml}
                 <div class="divider"></div>
-                ${p.cliente_dados.cupom_usado ? `<div class="item-line"><span>Cupom:</span><span>${p.cliente_dados.cupom_usado}</span></div>` : ''}
-                <div class="total">TOTAL: R$ ${parseFloat(p.total).toFixed(2).replace('.', ',')}</div>
+                ${clienteDados.cupom_usado ? `<div class="item-line"><span>Cupom:</span><span>${escapeHTML(clienteDados.cupom_usado)}</span></div>` : ''}
+                <div class="total">TOTAL: R$ ${formatCurrencyBR(p.total)}</div>
                 <div class="info" style="margin-top:5px">
-                    Pagamento: <strong>${p.cliente_dados.pagamento}</strong>
-                    ${p.cliente_dados.troco ? `<br>Troco para: R$ ${p.cliente_dados.troco}` : ''}
+                    Pagamento: <strong>${escapeHTML(clienteDados.pagamento || '--')}</strong>
+                    ${clienteDados.troco ? `<br>Troco para: R$ ${escapeHTML(clienteDados.troco)}` : ''}
                 </div>
-                ${p.cliente_dados.obs ? `<div class="obs">OBS: ${p.cliente_dados.obs}</div>` : ''}
+                ${clienteDados.obs ? `<div class="obs">OBS: ${escapeHTML(clienteDados.obs)}</div>` : ''}
                 <div style="text-align:center; margin-top:20px; font-size:0.8rem;">--- Fim do Pedido ---</div>
                 <script>window.onload = function() { window.print(); window.close(); }</script>
             </body>

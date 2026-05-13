@@ -15,6 +15,12 @@
     margin-right: 15px; 
 }
 
+.prod-img.image-fallback {
+    object-fit: contain;
+    background: #fff3f7;
+    border: 1px dashed #f8b4cb;
+}
+
 .prod-info { flex: 1; }
 
 .actions { display: flex; gap: 10px; }

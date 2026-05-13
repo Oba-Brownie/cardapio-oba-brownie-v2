@@ -2,6 +2,7 @@ import { supabase } from '../config/supabase-config.js';
 import { LISTA_BAIRROS } from '../config/constants.js';
 import { getCart, clearCart } from './cart_service.js';
 import { getCurrentCartValues, setTaxaEntregaUI } from './cart_ui.js'; // <-- A calculadora certa está aqui!
+import { LOCAL_TEST_MODE } from './local_test_mode.js';
 
 const audioConfirmacao = new Audio('audio/confirmar_encomenda.mp3');
 
@@ -114,8 +115,6 @@ export function syncDeliveryState() {
 }
 
 async function handleCheckout() {
-    audioConfirmacao.play().catch(e => console.warn("Áudio bloqueado:", e));
-    
     const isScheduling = !!document.querySelector('.scheduling-notice'); 
     const cart = getCart(); 
     const cartValues = getCurrentCartValues(); // <-- CORRIGIDO AQUI TAMBÉM!
@@ -144,9 +143,19 @@ async function handleCheckout() {
     }
 
     if (paymentMethod === 'Pix') {
+        if (LOCAL_TEST_MODE) {
+            return finalizarPedidoMockado();
+        }
+
         const copiouChave = confirm("⚠️ ATENÇÃO ⚠️\n\nComo seu pagamento é via Pix, você precisará enviar o COMPROVANTE no nosso WhatsApp para que o pedido seja preparado.\n\nVocê já copiou a nossa Chave Pix?\nClique em 'OK' para continuar.");
         if (!copiouChave) return; 
     }
+
+    if (LOCAL_TEST_MODE) {
+        return finalizarPedidoMockado();
+    }
+
+    audioConfirmacao.play().catch(e => console.warn("Áudio bloqueado:", e));
 
     const btn = document.getElementById('checkout-button');
     btn.disabled = true;
@@ -197,6 +206,8 @@ async function handleCheckout() {
 
     const taxaCartao = cartValues.taxaCartao || 0;
     const totalFinal = subtotalComDesconto + cartValues.frete + taxaCartao;
+    let pedidoRegistradoNoBanco = false;
+    const falhasBaixaEstoque = [];
 
     // === TENTA SALVAR NO BANCO (MODO INDESTRUTÍVEL) ===
     try {
@@ -219,21 +230,42 @@ async function handleCheckout() {
         const { error: erroPedido } = await supabase.from('pedidos').insert([pedido]);
         
         if (erroPedido) {
-            console.warn("Supabase bloqueado ou offline. Enviando apenas via WhatsApp.");
+            console.warn("Pedido não registrado no Supabase. Enviando apenas via WhatsApp.", erroPedido);
         } else {
+            pedidoRegistradoNoBanco = true;
             // Atualiza estoque no banco
             for (const item of cart) {
-                const { data: pAtual } = await supabase.from('produtos').select('estoque').eq('id', item.id).single();
-                if (pAtual && (pAtual.estoque - item.quantity) >= 0) {
-                    await supabase.from('produtos').update({ estoque: pAtual.estoque - item.quantity }).eq('id', item.id);
+                const { data: pAtual, error: erroConsultaEstoque } = await supabase.from('produtos').select('estoque').eq('id', item.id).single();
+                if (erroConsultaEstoque || !pAtual) {
+                    falhasBaixaEstoque.push(`${item.name}: estoque não consultado`);
+                    continue;
+                }
+
+                if ((pAtual.estoque - item.quantity) >= 0) {
+                    const { error: erroBaixaEstoque } = await supabase
+                        .from('produtos')
+                        .update({ estoque: pAtual.estoque - item.quantity })
+                        .eq('id', item.id);
+
+                    if (erroBaixaEstoque) {
+                        falhasBaixaEstoque.push(`${item.name}: ${erroBaixaEstoque.message || 'baixa bloqueada'}`);
+                    }
+                } else {
+                    falhasBaixaEstoque.push(`${item.name}: estoque insuficiente na baixa`);
                 }
             }
             if (window.cupomAplicado) {
-                await supabase.from('cupons').update({ quantidade: window.cupomAplicado.quantidade - 1 }).eq('id', window.cupomAplicado.id);
+                const { error: erroBaixaCupom } = await supabase
+                    .from('cupons')
+                    .update({ quantidade: window.cupomAplicado.quantidade - 1 })
+                    .eq('id', window.cupomAplicado.id);
+                if (erroBaixaCupom) {
+                    console.warn("Cupom aplicado no pedido, mas a quantidade não foi baixada automaticamente.", erroBaixaCupom);
+                }
             }
         }
     } catch (e) {
-        console.warn("Falha de conexão ignorada. Prosseguindo para o WhatsApp...");
+        console.warn("Falha de conexão ao registrar pedido. Prosseguindo para o WhatsApp...", e);
     }
 
     // === GERAÇÃO DA MENSAGEM DO WHATSAPP ===
@@ -265,6 +297,12 @@ async function handleCheckout() {
     
     message += `\n`;
     if (phone) message += `\n*TELEFONE:* *${phone}*\n`;
+
+    if (!pedidoRegistradoNoBanco) {
+        message += `\n*ATENÇÃO INTERNA:* pedido não confirmado no painel automaticamente. Conferir manualmente.\n`;
+    } else if (falhasBaixaEstoque.length > 0) {
+        message += `\n*ATENÇÃO INTERNA:* pedido registrado, mas a baixa automática de estoque falhou. Conferir estoque manualmente.\n`;
+    }
     
     const obs = document.getElementById('customer-observation').value;
     if (obs) message += `\n*OBSERVAÇÃO:* *${obs.trim()}*\n`;
@@ -292,7 +330,32 @@ async function handleCheckout() {
     const modalSucesso = document.getElementById('modal-sucesso-pedido');
     if (modalSucesso) modalSucesso.style.display = 'flex';
 
+    if (!pedidoRegistradoNoBanco) {
+        alert("Pedido pronto para enviar no WhatsApp, mas não foi confirmado no painel automaticamente. Avise a loja pelo WhatsApp.");
+    } else if (falhasBaixaEstoque.length > 0) {
+        alert("Pedido registrado. Atenção: o estoque não foi baixado automaticamente. A loja deve conferir manualmente.");
+    }
+
     localStorage.removeItem('oba_cart');
     localStorage.removeItem('oba_cart_time');
     btn.disabled = false;
+}
+
+function finalizarPedidoMockado() {
+    const modalSucesso = document.getElementById('modal-sucesso-pedido');
+    const btnZap = document.getElementById('btn-ir-whatsapp');
+
+    if (btnZap) {
+        btnZap.removeAttribute('href');
+        btnZap.onclick = (event) => {
+            event.preventDefault();
+            alert('Pedido simulado localmente');
+        };
+    }
+
+    if (modalSucesso) {
+        modalSucesso.style.display = 'flex';
+    }
+
+    alert('Pedido simulado localmente');
 }
