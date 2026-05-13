@@ -25,14 +25,14 @@ export function setTaxaEntregaUI(valor) {
     taxaEntregaAtual = valor;
     const el = document.getElementById('taxa-entrega-cart');
     if(el) el.innerText = `R$ ${valor.toFixed(2).replace('.', ',')}`;
-    renderCartTotals(); 
+    renderCartTotals();
 }
 
 export function getCurrentCartValues() {
     const paySelect = document.getElementById('payment-method');
     const metodoPagamento = paySelect ? paySelect.value : '';
     const cupomPerc = window.cupomAplicado ? window.cupomAplicado.desconto_percentual : 0;
-    
+
     return calculateTotals(taxaEntregaAtual, cupomPerc, metodoPagamento);
 }
 
@@ -55,7 +55,7 @@ window.copiarChavePix = () => {
     navigator.clipboard.writeText(chave).then(() => {
         const btn = document.querySelector('#pix-key-line button');
         btn.innerHTML = '<i class="fas fa-check"></i> Copiado!';
-        btn.style.background = '#2e7d32'; 
+        btn.style.background = '#2e7d32';
         setTimeout(() => {
             btn.innerHTML = '<i class="fas fa-copy"></i> Copiar';
             btn.style.background = '#4caf50';
@@ -108,10 +108,10 @@ function renderCartList() {
 }
 
 function renderCartTotals() {
-    const values = getCurrentCartValues(); 
+    const values = getCurrentCartValues();
     const elSub = document.getElementById('subtotal-cart');
     const elTotal = document.getElementById('cart-total');
-    
+
     if(elSub) elSub.innerText = `R$ ${values.subtotal.toFixed(2).replace('.', ',')}`;
 
     let taxaCartaoLine = document.getElementById('taxa-cartao-line');
@@ -170,6 +170,13 @@ function updateFloatingIcon() {
     const cart = getCart();
     const count = cart.reduce((acc, item) => acc + item.quantity, 0);
     const badge = document.getElementById('contador-carrinho');
+    const floatingCart = document.getElementById('carrinho-flutuante');
+
+    if (floatingCart) {
+        if (count > 0) floatingCart.classList.add('has-items');
+        else floatingCart.classList.remove('has-items');
+    }
+
     if (badge) {
         badge.innerText = count;
         if (count > 0) badge.classList.add('visible');

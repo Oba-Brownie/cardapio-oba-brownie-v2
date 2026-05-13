@@ -32,7 +32,7 @@ function setupEventListeners(canShop) {
     const bairroSelect = document.getElementById('bairro-select');
     const paymentMethodSelect = document.getElementById('payment-method');
     const carrinhoFlutuante = document.getElementById('carrinho-flutuante');
-    
+
     if (bairroSelect) {
         bairroSelect.addEventListener('change', (event) => {
             const bairroEncontrado = LISTA_BAIRROS.find(b => b.nome === event.target.value);
@@ -50,7 +50,7 @@ function setupEventListeners(canShop) {
             if (val === 'Pix') {
                 if (window.openPixPopup) window.openPixPopup();
             }
-            
+
             if (val === 'Dinheiro') {
                 trocoSection.style.display = 'block';
             } else {
@@ -64,7 +64,7 @@ function setupEventListeners(canShop) {
             } else {
                 taxaInfoBox.style.display = 'none';
             }
-            
+
             setTaxaEntregaUI(parseFloat(document.getElementById('bairro-select').selectedOptions[0]?.dataset?.taxa || 0));
             if (window.atualizarResumoDesconto) window.atualizarResumoDesconto();
         });
@@ -75,8 +75,16 @@ function setupEventListeners(canShop) {
     });
 
     if (carrinhoFlutuante) {
-        carrinhoFlutuante.addEventListener('click', () => {
+        const irParaCheckout = () => {
             document.querySelector('.checkout-area').scrollIntoView({ behavior: 'smooth' });
+        };
+
+        carrinhoFlutuante.addEventListener('click', irParaCheckout);
+        carrinhoFlutuante.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                irParaCheckout();
+            }
         });
     }
 
@@ -96,27 +104,27 @@ export function syncDeliveryState() {
         if (deliveryFields) deliveryFields.style.display = 'none';
         if (pickupInfo) pickupInfo.style.display = 'block';
         if (deliveryFeeLine) deliveryFeeLine.style.display = 'none';
-        
+
         setTaxaEntregaUI(0);
         if (bairroSelect) bairroSelect.selectedIndex = 0;
     } else {
         if (deliveryFields) deliveryFields.style.display = 'block';
         if (pickupInfo) pickupInfo.style.display = 'none';
         if (deliveryFeeLine) deliveryFeeLine.style.display = 'flex';
-        
+
         if (bairroSelect && bairroSelect.value !== "Selecione o bairro...") {
             const option = bairroSelect.selectedOptions[0];
             const taxa = option ? parseFloat(option.dataset.taxa) : 0;
             setTaxaEntregaUI(taxa);
         }
     }
-    
+
     if (window.atualizarResumoDesconto) window.atualizarResumoDesconto();
 }
 
 async function handleCheckout() {
-    const isScheduling = !!document.querySelector('.scheduling-notice'); 
-    const cart = getCart(); 
+    const isScheduling = !!document.querySelector('.scheduling-notice');
+    const cart = getCart();
     const cartValues = getCurrentCartValues(); // <-- CORRIGIDO AQUI TAMBÉM!
 
     if (cart.length === 0) return alert("Seu carrinho está vazio!");
@@ -125,13 +133,13 @@ async function handleCheckout() {
     const phone = document.getElementById('customer-phone').value;
     const paymentMethod = document.getElementById('payment-method').value;
     const deliveryType = document.querySelector('input[name="delivery_type"]:checked').value;
-    
+
     if (!name || !paymentMethod) return alert("Por favor, preencha seu nome e a forma de pagamento.");
 
     const address = document.getElementById('customer-address').value;
     const bairroNome = document.getElementById('bairro-select').value;
     const reference = document.getElementById('customer-reference').value;
-    
+
     if (deliveryType === 'delivery' && (!address || bairroNome === "Selecione o bairro...")) {
         return alert("Para delivery, por favor, preencha o bairro e o endereço.");
     }
@@ -148,7 +156,7 @@ async function handleCheckout() {
         }
 
         const copiouChave = confirm("⚠️ ATENÇÃO ⚠️\n\nComo seu pagamento é via Pix, você precisará enviar o COMPROVANTE no nosso WhatsApp para que o pedido seja preparado.\n\nVocê já copiou a nossa Chave Pix?\nClique em 'OK' para continuar.");
-        if (!copiouChave) return; 
+        if (!copiouChave) return;
     }
 
     if (LOCAL_TEST_MODE) {
@@ -175,13 +183,13 @@ async function handleCheckout() {
             for (const item of cart) {
                 // A CORREÇÃO ESTÁ AQUI: Envolver ambos em String() para a comparação bater certo!
                 const prodReal = produtosBanco.find(p => String(p.id) === String(item.id));
-                
+
                 if (!prodReal || prodReal.ativo === false) {
                     btn.disabled = false;
                     btn.textContent = 'ENVIAR PEDIDO';
                     return alert(`❌ O produto "${item.name}" não está mais disponível no momento. Por favor, remova-o do carrinho para continuar.`);
                 }
-                
+
                 if (prodReal.estoque < item.quantity) {
                     btn.disabled = false;
                     btn.textContent = 'ENVIAR PEDIDO';
@@ -199,7 +207,7 @@ async function handleCheckout() {
     // === CÁLCULOS ===
     let subtotalComDesconto = cartValues.subtotal;
     let valorDesconto = cartValues.desconto || 0;
-    
+
     if (window.cupomAplicado) {
         subtotalComDesconto = cartValues.subtotal - valorDesconto;
     }
@@ -222,13 +230,13 @@ async function handleCheckout() {
                 obs: document.getElementById('customer-observation').value, tipo: deliveryType,
                 horario_agendado: isScheduling ? scheduledTime : null,
                 cupom_usado: window.cupomAplicado ? window.cupomAplicado.codigo : null,
-                valor_frete: cartValues.frete, taxa_maquininha: taxaCartao, valor_desconto: valorDesconto           
+                valor_frete: cartValues.frete, taxa_maquininha: taxaCartao, valor_desconto: valorDesconto
             },
             itens: itensOtimizados, total: totalFinal, status: 'Novo', data: new Date().toISOString()
         };
 
         const { error: erroPedido } = await supabase.from('pedidos').insert([pedido]);
-        
+
         if (erroPedido) {
             console.warn("Pedido não registrado no Supabase. Enviando apenas via WhatsApp.", erroPedido);
         } else {
@@ -272,14 +280,14 @@ async function handleCheckout() {
     const displayName = name.trim().split(' ').slice(0, 2).join(' ');
     const numeroWhatsapp = '5599991675891';
     const TRIANGULOS = "\uD83D\uDD3A\uD83D\uDD3B\uD83D\uDD3A\uD83D\uDD3B\uD83D\uDD3A\uD83D\uDD3B\uD83D\uDD3A\uD83D\uDD3B\uD83D\uDD3A\uD83D\uDD3B\uD83D\uDD3A\uD83D\uDD3B";
-    
+
     let message = `*${TRIANGULOS}*\n\n`;
 
     if (isScheduling) {
         const dataTexto = document.getElementById('next-day-date').textContent;
         message += `*‼️ PEDIDO AGENDADO ‼️*\n*PARA: ${dataTexto}*\n*HORÁRIO: ${scheduledTime}*\n\n`;
     }
-    
+
     message += `*•••  PEDIDO ${displayName}  •••*\n\n`;
 
     if (deliveryType === 'pickup') {
@@ -294,7 +302,7 @@ async function handleCheckout() {
         const troco = document.getElementById('troco-para').value;
         if (troco) message += ` *(Troco para R$ ${troco})*`;
     }
-    
+
     message += `\n`;
     if (phone) message += `\n*TELEFONE:* *${phone}*\n`;
 
@@ -303,15 +311,15 @@ async function handleCheckout() {
     } else if (falhasBaixaEstoque.length > 0) {
         message += `\n*ATENÇÃO INTERNA:* pedido registrado, mas a baixa automática de estoque falhou. Conferir estoque manualmente.\n`;
     }
-    
+
     const obs = document.getElementById('customer-observation').value;
     if (obs) message += `\n*OBSERVAÇÃO:* *${obs.trim()}*\n`;
-    
+
     message += `\n--- *ITENS DO PEDIDO* ---\n`;
     cart.forEach(item => {
         message += `*${item.quantity}x ${item.name}* - *R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')}*\n`;
     });
-    
+
     message += `\n*Subtotal:* *R$ ${cartValues.subtotal.toFixed(2).replace('.', ',')}*`;
     if (deliveryType === 'delivery') message += `\n*VALOR DA ENTREGA:* *R$ ${cartValues.frete.toFixed(2).replace('.', ',')}*\n`;
     if (window.cupomAplicado) message += `\n*🎟️ Cupom (${window.cupomAplicado.codigo}):* *-R$ ${valorDesconto.toFixed(2).replace('.', ',')}*`;
@@ -320,9 +328,9 @@ async function handleCheckout() {
     message += `\n\n*${TRIANGULOS}*`;
 
     const whatsappUrl = `https://wa.me/${numeroWhatsapp}?text=${encodeURIComponent(message)}`;
-    
+
     btn.textContent = 'Pedido Registrado!';
-    btn.style.backgroundColor = '#4CAF50'; 
+    btn.style.backgroundColor = '#4CAF50';
 
     const btnZap = document.getElementById('btn-ir-whatsapp');
     if (btnZap) btnZap.href = whatsappUrl;
