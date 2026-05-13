@@ -80,6 +80,11 @@ const mockProducts = [
     }
 ];
 
+const hoje = new Date();
+const hojeISO = hoje.toISOString();
+const meiaHoraAtrasISO = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+const duasHorasAtrasISO = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+
 export function assertNotLocalMutation(action = 'operacao') {
     if (!LOCAL_TEST_MODE) return;
     throw new Error(`Modo local ativo: ${action} bloqueada.`);
@@ -132,11 +137,69 @@ export function getMockProductsAdmin() {
 }
 
 export function getMockPedidos() {
-    return [];
+    return [
+        {
+            id: 'mock-pedido-1',
+            cliente_nome: 'Pamella',
+            status: 'Novo',
+            data: hojeISO,
+            total: 21.99,
+            itens: [
+                { name: 'Combo do Dia', quantity: 1, price: 21.99 }
+            ],
+            cliente_dados: {
+                tipo: 'pickup',
+                telefone: '85999990000',
+                endereco: '',
+                obs: 'Sem castanhas, por favor.',
+                pagamento: 'Pix',
+                cupom_usado: 'LOCAL10'
+            }
+        },
+        {
+            id: 'mock-pedido-2',
+            cliente_nome: 'Talita',
+            status: 'Em Entrega',
+            data: meiaHoraAtrasISO,
+            total: 37,
+            itens: [
+                { name: 'Bolo gelado choconinho', quantity: 2, price: 8 },
+                { name: 'Coxinha de morango, ninho e nutella', quantity: 2, price: 8.99 }
+            ],
+            cliente_dados: {
+                tipo: 'delivery',
+                telefone: '85988887777',
+                endereco: 'Rua Local, 123 - Bairro Teste',
+                obs: '',
+                pagamento: 'Cartao'
+            }
+        },
+        {
+            id: 'mock-pedido-3',
+            cliente_nome: 'Alessandra',
+            status: 'Concluido',
+            data: duasHorasAtrasISO,
+            total: 67.98,
+            itens: [
+                { name: 'Caixinha trio mini ovos', quantity: 1, price: 37.99 },
+                { name: 'Mini confeiteiro marshmallow', quantity: 1, price: 29.99 }
+            ],
+            cliente_dados: {
+                tipo: 'delivery',
+                telefone: '85977776666',
+                endereco: 'Avenida Mock, 456 - Centro',
+                obs: 'Entregar na portaria.',
+                pagamento: 'Dinheiro'
+            }
+        }
+    ];
 }
 
 export function getMockCupons() {
-    return [];
+    return [
+        { id: 'mock-cupom-1', codigo: 'LOCAL10', desconto_percentual: 10, valor_minimo: 30, quantidade: 12 },
+        { id: 'mock-cupom-2', codigo: 'TESTE5', desconto_percentual: 5, valor_minimo: 0, quantidade: 0 }
+    ];
 }
 
 export function findMockPedido() {

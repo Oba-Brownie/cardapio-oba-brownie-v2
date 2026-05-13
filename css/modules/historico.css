@@ -1,20 +1,33 @@
 .tabela-pedidos {
     width: 100%;
-    border-collapse: collapse;
-    background: white;
-    border-radius: 8px;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--surface-strong);
+    border-radius: var(--radius-lg);
     overflow: hidden;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
 }
 
-.tabela-pedidos thead { background-color: var(--primary); color: white; }
-.tabela-pedidos th, .tabela-pedidos td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
-.tabela-pedidos tr:hover { background-color: #f9f9f9; }
+.tabela-pedidos thead { background: linear-gradient(135deg, var(--primary), #ef5aa5); color: white; }
+.tabela-pedidos th, .tabela-pedidos td { padding: 13px 15px; text-align: left; border-bottom: 1px solid var(--border); }
+.tabela-pedidos tbody tr { transition: background-color 0.18s var(--ease-out); }
+.tabela-pedidos tr:hover { background-color: #fff4fa; }
 
-.badge-status { padding: 4px 8px; border-radius: 12px; font-size: 0.85em; font-weight: bold; }
-.badge-Concluido { background: #e8f5e9; color: #2e7d32; }
-.badge-Novo { background: #ffebee; color: #c62828; }
-.badge-Entrega { background: #fff8e1; color: #f57f17; }
+.badge-status { padding: 4px 9px; border-radius: 999px; font-size: 0.85em; font-weight: bold; }
+.badge-Concluido { background: var(--success-soft); color: #217847; }
+.badge-Novo { background: var(--danger-soft); color: #b92c43; }
+.badge-Entrega { background: var(--warning-soft); color: #8b6200; }
+
+.tabela-pedidos button {
+    border-radius: 999px !important;
+    transition: transform 0.18s var(--ease-out), background-color 0.18s var(--ease-out);
+}
+
+.tabela-pedidos button:hover {
+    transform: translateY(-1px);
+    background-color: #fff0f7 !important;
+}
 
 /* --- AJUSTE MOBILE TABELAS --- */
 @media (max-width: 768px) {
@@ -24,7 +37,7 @@
         overflow-x: auto; /* Scroll horizontal se não couber */
         white-space: nowrap; /* Evita quebra de texto feia */
     }
-    
+
     .tabela-pedidos th, .tabela-pedidos td {
         padding: 10px;
         font-size: 0.9em;

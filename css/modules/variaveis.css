@@ -1,23 +1,44 @@
-:root { 
-    --primary: #F86DB3; 
-    --dark: #a33e6b; 
-    --bg: #fdf6f8; 
-    --white: #ffffff;
-    --success: #00c853;
-    --danger: #ff4444;
+:root {
+    --primary: #f45eaa;
+    --primary-strong: #b73571;
+    --primary-soft: #ffe5f1;
+    --dark: #9d315f;
+    --text: #2f2430;
+    --muted: #766774;
+    --bg: #fff7fb;
+    --surface: #fffafb;
+    --surface-strong: #fffefd;
+    --white: #fffefd;
+    --border: #f2d7e3;
+    --border-strong: #e7b8cd;
+    --success: #2fb665;
+    --success-soft: #e9f9ef;
+    --warning: #f6bd2f;
+    --warning-soft: #fff7df;
+    --danger: #e5465d;
+    --danger-soft: #ffe8ed;
+    --info: #3688d6;
+    --info-soft: #e8f3ff;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 8px 22px rgba(109, 49, 82, 0.08);
+    --shadow-md: 0 18px 42px rgba(109, 49, 82, 0.13);
+    --ease-out: cubic-bezier(.22, 1, .36, 1);
 }
 
-body { 
-    font-family: 'Segoe UI', sans-serif; 
-    background: var(--bg); 
-    margin: 0; 
-    display: flex; 
-    height: 100vh; 
-    overflow: hidden; 
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
 }
 
 /* Scrollbar Bonitinha */
-::-webkit-scrollbar { width: 8px; }
-::-webkit-scrollbar-track { background: #f1f1f1; }
-::-webkit-scrollbar-thumb { background: #F8B4CB; border-radius: 4px; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #fff0f6; }
+::-webkit-scrollbar-thumb { background: #f5a9ca; border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--primary); }

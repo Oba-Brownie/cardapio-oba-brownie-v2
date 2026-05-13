@@ -3,87 +3,94 @@
 /* ============================================================ */
 
 /* Formulário e Cartões Base */
-.form-card { 
-    background: var(--white); 
-    padding: 30px; 
-    border-radius: 10px; 
-    max-width: 600px; 
-    margin: 0 auto; 
-    box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
+.form-card {
+    background: var(--surface-strong);
+    padding: 30px;
+    border-radius: var(--radius-lg);
+    max-width: 600px;
+    margin: 0 auto;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
 }
 
 label {
     font-weight: bold;
-    color: #555;
+    color: var(--text);
     font-size: 0.9rem;
     display: block;
     margin-bottom: 5px;
 }
 
-input, select, textarea { 
-    width: 100%; 
-    padding: 12px; 
-    margin: 0 0 20px 0; 
-    border: 1px solid #ddd; 
-    border-radius: 6px; 
-    box-sizing: border-box; 
+input, select, textarea {
+    width: 100%;
+    padding: 12px;
+    margin: 0 0 20px 0;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    box-sizing: border-box;
     font-family: inherit;
+    color: var(--text);
+    background: var(--surface);
+    transition: border-color 0.18s var(--ease-out), box-shadow 0.18s var(--ease-out), background-color 0.18s var(--ease-out);
 }
 
 input:focus, select:focus, textarea:focus {
     outline: none;
     border-color: var(--primary);
+    background: var(--surface-strong);
+    box-shadow: 0 0 0 4px rgba(244, 94, 170, 0.12);
 }
 
 /* Botões Padrões dos Formulários */
-button.btn-save { 
-    width: 100%; 
-    background: var(--primary); 
-    color: var(--white); 
-    padding: 14px; 
-    border: none; 
-    border-radius: 6px; 
-    font-weight: bold; 
-    cursor: pointer; 
+button.btn-save {
+    width: 100%;
+    background: linear-gradient(135deg, var(--primary), #ec4ea0);
+    color: var(--white);
+    padding: 14px;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-weight: bold;
+    cursor: pointer;
     font-size: 1rem;
-    transition: background 0.2s;
+    box-shadow: 0 12px 24px rgba(244, 94, 170, 0.18);
+    transition: transform 0.18s var(--ease-out), box-shadow 0.18s var(--ease-out), filter 0.18s var(--ease-out);
 }
 
-button.btn-save:hover { background: var(--dark); }
+button.btn-save:hover { filter: brightness(0.98); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
 button:disabled { opacity: 0.7; cursor: not-allowed; }
 
 .btn-cancel {
-    background-color: #ccc;
-    color: #333;
+    background-color: #efe3e9;
+    color: var(--text);
     width: 100%;
     padding: 12px;
     border: none;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     font-weight: bold;
     cursor: pointer;
     margin-top: 10px;
     display: none;
 }
-.btn-cancel:hover { background-color: #bbb; }
+.btn-cancel:hover { background-color: #e4d4dc; }
 .btn-cancel.visible { display: block; }
 
 /* Modo Edição */
-.form-card.editing { border: 2px solid #ffca28; position: relative; }
+.form-card.editing { border: 2px solid var(--warning); position: relative; }
 .form-card.editing::before {
     content: "MODO DE EDIÇÃO";
     position: absolute;
     top: -10px; right: 20px;
-    background: #ffca28; color: #333;
+    background: var(--warning); color: #3a2a12;
     font-size: 0.8rem; padding: 2px 8px;
-    border-radius: 4px; font-weight: bold;
+    border-radius: 999px; font-weight: bold;
 }
 
 /* Preview Imagem */
 .preview-container { margin-top: 10px; margin-bottom: 20px; text-align: center; min-height: 20px; }
 #preview-img {
     max-width: 100%; max-height: 200px;
-    border-radius: 8px; border: 2px dashed #ddd;
-    padding: 5px; display: none; object-fit: contain; background-color: #f9f9f9;
+    border-radius: var(--radius-md); border: 2px dashed var(--border-strong);
+    padding: 5px; display: none; object-fit: contain; background-color: var(--surface);
 }
 #preview-img[src=""] { display: none; }
 
@@ -100,11 +107,11 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
         flex-direction: column;
         gap: 0 !important;
     }
-    
+
     .form-card input, .form-card select, .form-card textarea {
-        margin-bottom: 15px; 
+        margin-bottom: 15px;
     }
-    
+
     /* Configurações: As duas colunas viram uma só */
     #config > div {
         flex-direction: column;
@@ -127,23 +134,23 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 }
 
 .modal-cropper-content {
-    background-color: #fff;
+    background-color: var(--surface-strong);
     padding: 20px;
-    border-radius: 12px;
+    border-radius: var(--radius-lg);
     width: 95%;
     max-width: 600px;
     max-height: 95vh;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    box-shadow: var(--shadow-md);
     overflow-y: auto; /* 🛑 Permite rolar o modal se a tela do celular for muito "baixa" (deitada) */
 }
 
-.modal-cropper-content h3 { 
-    margin-top: 0; 
-    color: var(--dark); 
-    margin-bottom: 15px; 
-    text-align: center; 
+.modal-cropper-content h3 {
+    margin-top: 0;
+    color: var(--dark);
+    margin-bottom: 15px;
+    text-align: center;
 }
 
 .modal-cropper-content .img-container {
@@ -160,20 +167,20 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 }
 
 /* Essencial para o cropper funcionar */
-.modal-cropper-content #image-to-crop { 
-    max-width: 100%; 
-    max-height: 100%; 
-    display: block; 
+.modal-cropper-content #image-to-crop {
+    max-width: 100%;
+    max-height: 100%;
+    display: block;
 }
 
-.cropper-actions { 
-    display: flex; 
-    gap: 10px; 
-    justify-content: center; 
+.cropper-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
 }
 
-.cropper-actions button { 
-    flex: 1; 
-    max-width: 200px; 
-    margin: 0; 
+.cropper-actions button {
+    flex: 1;
+    max-width: 200px;
+    margin: 0;
 }
