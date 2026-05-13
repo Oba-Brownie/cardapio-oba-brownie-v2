@@ -123,11 +123,21 @@ window.addToCart = (id) => {
     if (produto) handleAddToCart(produto);
 };
 
-window.openPixPopup = () => { document.getElementById('pix-popup').style.display = 'flex'; };
-window.closePixPopup = () => { document.getElementById('pix-popup').style.display = 'none'; };
+window.openPixPopup = () => {
+    const popup = document.getElementById('pix-popup');
+    if (popup) popup.style.display = 'flex';
+};
+
+window.closePixPopup = () => {
+    const popup = document.getElementById('pix-popup');
+    if (popup) popup.style.display = 'none';
+};
 
 window.copyPixKey = async () => {
-    const key = document.getElementById('pix-key').innerText;
+    const pixKey = document.getElementById('pix-key');
+    if (!pixKey) return;
+
+    const key = pixKey.innerText;
     await copyToClipboard(key);
     alert('Chave Pix copiada!');
 };

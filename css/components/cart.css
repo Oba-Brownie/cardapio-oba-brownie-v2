@@ -197,6 +197,85 @@
 .resumo-line.total-final-cupom { font-weight: bold; font-size: 1.15em; color: #a33e6b; margin-top: 8px; }
 
 /* ================================================= */
+/* CHAVE PIX NO CHECKOUT                             */
+/* ================================================= */
+
+.pix-key-line {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    background: #ecfbf0;
+    border: 1px dashed #7acb8a;
+    border-radius: var(--radius-md);
+    color: #236b3c;
+    font-size: 0.95em;
+}
+
+.pix-key-title {
+    font-weight: 800;
+    text-align: center;
+}
+
+.pix-key-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #fffafb;
+    padding: 9px 10px;
+    border: 1px solid #b9dfbf;
+    border-radius: var(--radius-sm);
+}
+
+.pix-key-text {
+    color: var(--color-text);
+    font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+    font-size: 1em;
+    line-height: 1.3;
+    word-break: break-all;
+}
+
+.pix-copy-button {
+    min-height: 40px;
+    padding: 8px 12px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: #3fa65c;
+    color: #fffafb;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 800;
+    white-space: nowrap;
+    transition: background-color 0.18s var(--ease-out), transform 0.18s var(--ease-out);
+}
+
+.pix-copy-button:hover { background: #2f8d4c; }
+.pix-copy-button:active { transform: scale(0.97); }
+.pix-copy-button.pix-copy-button-copied { background: #236b3c; }
+
+.pix-copy-feedback {
+    min-height: 18px;
+    color: #236b3c;
+    font-size: 0.86em;
+    font-weight: 800;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.18s var(--ease-out);
+}
+
+.pix-copy-feedback.visible { opacity: 1; }
+
+.pix-key-hint {
+    margin-top: 2px;
+    color: var(--color-muted);
+    font-size: 0.85em;
+    text-align: center;
+}
+
+/* ================================================= */
 /* MODAL DE SUCESSO DO PEDIDO                        */
 /* ================================================= */
 .modal-sucesso-overlay {
@@ -315,5 +394,14 @@
     }
     .cupom-btn {
         padding: 0 15px;
+    }
+
+    .pix-key-card {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .pix-copy-button {
+        width: 100%;
     }
 }

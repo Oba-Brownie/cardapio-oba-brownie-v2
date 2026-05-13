@@ -51,14 +51,36 @@ window.removeCartItem = (id) => {
 };
 
 window.copiarChavePix = () => {
-    const chave = document.getElementById('pix-chave-texto').innerText;
+    const chaveEl = document.getElementById('pix-chave-texto');
+    if (!chaveEl) return;
+
+    const chave = chaveEl.innerText;
     navigator.clipboard.writeText(chave).then(() => {
         const btn = document.querySelector('#pix-key-line button');
-        btn.innerHTML = '<i class="fas fa-check"></i> Copiado!';
-        btn.style.background = '#2e7d32';
+        const feedback = document.getElementById('pix-copy-feedback');
+
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-check"></i> Copiado';
+            btn.classList.add('pix-copy-button-copied');
+            btn.setAttribute('aria-label', 'Chave Pix copiada');
+        }
+
+        if (feedback) {
+            feedback.textContent = 'Chave Pix copiada.';
+            feedback.classList.add('visible');
+        }
+
         setTimeout(() => {
-            btn.innerHTML = '<i class="fas fa-copy"></i> Copiar';
-            btn.style.background = '#4caf50';
+            if (btn) {
+                btn.innerHTML = '<i class="fas fa-copy"></i> Copiar';
+                btn.classList.remove('pix-copy-button-copied');
+                btn.setAttribute('aria-label', 'Copiar chave Pix');
+            }
+
+            if (feedback) {
+                feedback.classList.remove('visible');
+                feedback.textContent = '';
+            }
         }, 2000);
     }).catch(() => alert("Erro ao copiar a chave."));
 };
@@ -136,15 +158,16 @@ function renderCartTotals() {
     if (!pixLine && elTotal) {
         pixLine = document.createElement('div');
         pixLine.id = 'pix-key-line';
-        pixLine.style.cssText = "display: flex; flex-direction: column; gap: 8px; padding: 12px; margin-top: 10px; margin-bottom: 10px; background: #e8f5e9; border: 1px dashed #4caf50; border-radius: 8px; color: #2e7d32; font-size: 0.95em;";
+        pixLine.className = 'pix-key-line';
         const chave = window.chavePixLoja || 'obabrownie2025@gmail.com';
         pixLine.innerHTML = `
-            <div style="font-weight: bold; text-align: center;">Chave Pix para Pagamento:</div>
-            <div style="display: flex; align-items: center; justify-content: space-between; background: #fff; padding: 8px 12px; border-radius: 5px; border: 1px solid #a5d6a7;">
-                <span id="pix-chave-texto" style="word-break: break-all; font-family: monospace; font-size: 1.1em; color: #333;">${escapeHTML(chave)}</span>
-                <button type="button" onclick="copiarChavePix()" style="background: #4caf50; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.9em; margin-left: 10px; white-space: nowrap; font-weight: bold; transition: 0.2s;"><i class="fas fa-copy"></i> Copiar</button>
+            <div class="pix-key-title">Chave Pix para pagamento</div>
+            <div class="pix-key-card">
+                <span id="pix-chave-texto" class="pix-key-text">${escapeHTML(chave)}</span>
+                <button type="button" class="pix-copy-button" onclick="copiarChavePix()" aria-label="Copiar chave Pix"><i class="fas fa-copy"></i> Copiar</button>
             </div>
-            <div style="font-size: 0.85em; text-align: center; color: #666; margin-top: 4px;">Envie o comprovante no WhatsApp ao finalizar o pedido.</div>
+            <div id="pix-copy-feedback" class="pix-copy-feedback" role="status" aria-live="polite"></div>
+            <div class="pix-key-hint">Envie o comprovante no WhatsApp ao finalizar o pedido.</div>
         `;
         elTotal.parentElement.parentNode.insertBefore(pixLine, elTotal.parentElement);
     }
