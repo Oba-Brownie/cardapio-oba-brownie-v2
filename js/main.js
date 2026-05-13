@@ -16,6 +16,7 @@ import { isSchedulingOrder, clearSchedulingOrder, setSchedulingOrder, setupSched
 import './modules/coupons.js';
 
 let todosProdutos = [];
+const CATALOG_REFRESH_INTERVAL_MS = 2 * 60 * 1000;
 
 document.addEventListener('DOMContentLoaded', async () => {
     hideSplashScreen();
@@ -56,7 +57,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     try {
-        todosProdutos = await fetchProducts();
+        todosProdutos = await fetchProducts({ forceRefresh: true });
         renderProducts(todosProdutos, canShop, config.categoriasOrdem);
     } catch (error) {
         console.error("Erro ao carregar produtos:", error);
@@ -152,9 +153,7 @@ document.addEventListener('visibilitychange', async () => {
         const ultimoRefresh = sessionStorage.getItem('oba_ultimo_refresh');
         const agora = Date.now();
 
-        // Verifica se já passou 1 minuto (60.000 milissegundos) desde a última atualização
-        if (!ultimoRefresh || (agora - parseInt(ultimoRefresh)) > 60000) {
-            console.log("Atualizando cardápio silenciosamente...");
+        if (!ultimoRefresh || (agora - parseInt(ultimoRefresh, 10)) > CATALOG_REFRESH_INTERVAL_MS) {
             
             // Regista a hora desta atualização
             sessionStorage.setItem('oba_ultimo_refresh', agora.toString());
@@ -173,7 +172,7 @@ document.addEventListener('visibilitychange', async () => {
                 }
                 const canShop = lojaAberta || isScheduling;
                 
-                todosProdutos = await fetchProducts();
+                todosProdutos = await fetchProducts({ forceRefresh: true });
                 renderProducts(todosProdutos, canShop, config.categoriasOrdem);
                 
                 if (typeof handleStoreStatusUI === 'function') {

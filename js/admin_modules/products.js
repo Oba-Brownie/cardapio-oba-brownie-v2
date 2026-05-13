@@ -4,6 +4,8 @@
 /* ================================================= */
 
 import { supabase } from '../config/supabase-config.js';
+import { attachImageFallbacks, DEFAULT_IMAGE_FALLBACK, escapeHTML, escapeAttribute, formatCurrencyBR, inlineJSString, safeNumber, sanitizeImageUrl, validateImageUrl } from '../modules/utils.js';
+import { LOCAL_TEST_MODE, getMockConfigLoja, getMockProductsAdmin, showLocalMutationBlocked } from '../modules/local_test_mode.js';
 
 let cropperInstance = null;
 let currentFile = null; 
@@ -15,6 +17,7 @@ window.abrirGaleria = abrirGaleria;
 window.fecharGaleria = fecharGaleria;
 window.selecionarImagemGaleria = selecionarImagemGaleria;
 window.deletarImagemGaleria = deletarImagemGaleria;
+window.testarImagemProduto = testarImagemProduto;
 
 // === CORTADOR DE IMAGENS ===
 export function cancelarCorte() {
@@ -81,6 +84,31 @@ export function mostrarPreview(input) {
     reader.readAsDataURL(file);
 }
 
+export async function testarImagemProduto() {
+    const urlInput = document.getElementById('p-foto-url');
+    const preview = document.getElementById('preview-img');
+    const url = urlInput ? urlInput.value.trim() : '';
+
+    if (!url) {
+        alert('Cole uma URL de imagem antes de testar.');
+        return;
+    }
+
+    const carrega = await validateImageUrl(url);
+    if (!carrega) {
+        alert('A imagem não carregou. Use um link direto de imagem, de preferência começando com https://i.ibb.co/.');
+        return;
+    }
+
+    if (preview) {
+        preview.dataset.fallbackSrc = DEFAULT_IMAGE_FALLBACK;
+        attachImageFallbacks(preview.parentElement || document);
+        preview.src = sanitizeImageUrl(url);
+        preview.style.display = 'block';
+    }
+    alert('Imagem carregou corretamente.');
+}
+
 // === LISTAGEM E RENDERIZAÇÃO ===
 export function toggleCategoriaAdmin(header) {
     const content = header.nextElementSibling;
@@ -99,7 +127,9 @@ export async function carregarProdutos() {
     if(!div) return;
     div.innerHTML = '<p style="text-align:center; padding:20px; color:#666"><i class="fas fa-spinner fa-spin"></i> Atualizando estoque...</p>';
     
-    const { data } = await supabase.from('produtos').select('id, nome, preco, preco_original, estoque, ordem, categoria, ativo, destaque, imagem, descricao').order('ordem', { ascending: true });
+    const data = LOCAL_TEST_MODE
+        ? getMockProductsAdmin()
+        : (await supabase.from('produtos').select('id, nome, preco, preco_original, estoque, ordem, categoria, ativo, destaque, imagem, descricao').order('ordem', { ascending: true })).data;
     window.listaProdutosCache = data || []; 
     div.innerHTML = '';
     
@@ -119,11 +149,12 @@ export async function carregarProdutos() {
     categoriasEncontradas.forEach(cat => {
         const groupDiv = document.createElement('div');
         groupDiv.className = 'category-group';
+        const safeCategory = escapeHTML(cat || 'Sem categoria');
         
         const headerDiv = document.createElement('div');
         headerDiv.className = 'admin-cat-header';
         headerDiv.onclick = function() { window.toggleCategoriaAdmin(this) };
-        headerDiv.innerHTML = `<h3>${cat}</h3><i class="fas fa-chevron-down admin-cat-icon"></i>`;
+        headerDiv.innerHTML = `<h3>${safeCategory}</h3><i class="fas fa-chevron-down admin-cat-icon"></i>`;
         groupDiv.appendChild(headerDiv);
 
         const contentDiv = document.createElement('div');
@@ -140,21 +171,29 @@ export async function carregarProdutos() {
             const el = document.createElement('div');
             el.className = 'prod-item';
             el.style.cssText = bordaItem; 
+            const productId = inlineJSString(p.id);
+            const productImage = escapeAttribute(sanitizeImageUrl(p.imagem, 'https://placehold.co/60'));
+            const productName = escapeHTML(p.nome);
+            const productOrder = escapeHTML(p.ordem || 999);
+            const productStock = safeNumber(p.estoque);
+            const productPrice = formatCurrencyBR(p.preco);
+            const originalPrice = p.preco_original ? `<span style="text-decoration:line-through; color:#999; font-size:0.85em; margin-right:5px;">R$ ${formatCurrencyBR(p.preco_original)}</span>` : '';
             el.innerHTML = `
-                <img src="${p.imagem || 'https://placehold.co/60'}" class="prod-img" loading="lazy">
+                <img src="${productImage}" class="prod-img" loading="lazy" decoding="async" data-fallback-src="https://placehold.co/60">
                 <div class="prod-info">
-                    <div style="font-weight:bold;">${p.nome} ${badgeDestaque}</div>
-                    <div style="color:#666">Ordem: <strong>${p.ordem || 999}</strong> | Est: <strong style="${isEstoqueBaixo ? 'color:#d32f2f' : ''}">${p.estoque}</strong> ${alertaEstoque}</div>
+                    <div style="font-weight:bold;">${productName} ${badgeDestaque}</div>
+                    <div style="color:#666">Ordem: <strong>${productOrder}</strong> | Est: <strong style="${isEstoqueBaixo ? 'color:#d32f2f' : ''}">${productStock}</strong> ${alertaEstoque}</div>
                     <div style="color:#F86DB3">
-                        ${p.preco_original ? `<span style="text-decoration:line-through; color:#999; font-size:0.85em; margin-right:5px;">R$ ${p.preco_original.toFixed(2)}</span>` : ''}
-                        R$ ${p.preco.toFixed(2)} 
+                        ${originalPrice}
+                        R$ ${productPrice}
                         <span style="width:10px; height:10px; background:${statusCor}; display:inline-block; border-radius:50%; margin-left:5px;"></span>
                     </div>
                 </div>
                 <div class="actions">
-                    <button onclick="prepararEdicao('${p.id}')" class="btn-edit"><i class="fas fa-edit"></i></button>
-                    <button onclick="deletarProduto('${p.id}')" class="btn-delete"><i class="fas fa-trash"></i></button>
+                    <button onclick="prepararEdicao(${productId})" class="btn-edit"><i class="fas fa-edit"></i></button>
+                    <button onclick="deletarProduto(${productId})" class="btn-delete"><i class="fas fa-trash"></i></button>
                 </div>`;
+            attachImageFallbacks(el, 'https://placehold.co/60');
             contentDiv.appendChild(el);
         });
         groupDiv.appendChild(contentDiv);
@@ -182,7 +221,12 @@ export function prepararEdicao(id) {
         if (urlInput) urlInput.value = '';
 
         const preview = document.getElementById('preview-img');
-        if (produto.imagem) { preview.src = produto.imagem; preview.style.display = 'block'; }
+        if (produto.imagem) {
+            preview.dataset.fallbackSrc = DEFAULT_IMAGE_FALLBACK;
+            attachImageFallbacks(preview.parentElement || document);
+            preview.src = produto.imagem;
+            preview.style.display = 'block';
+        }
         else { preview.src = ''; preview.style.display = 'none'; }
         
         window.produtoEmEdicaoId = id; 
@@ -217,6 +261,12 @@ export function cancelarEdicao() {
 
 export async function salvarProduto(e) {
     e.preventDefault();
+
+    if (LOCAL_TEST_MODE) {
+        showLocalMutationBlocked('Salvar produto ou enviar imagem');
+        return;
+    }
+
     const btn = document.getElementById('btn-salvar'); 
     const textoOriginal = btn.innerText;
     btn.innerText = "Processando..."; btn.disabled = true;
@@ -228,7 +278,9 @@ export async function salvarProduto(e) {
         let fotoUrlFinal = window.urlImagemAtual; 
         
         // PRIORIDADE 1: Se ela colou um link ou selecionou da Galeria
-        if (urlInput && urlInput.value.trim() !== '') {
+        const imagemColadaManual = urlInput && urlInput.value.trim() !== '';
+
+        if (imagemColadaManual) {
             fotoUrlFinal = urlInput.value.trim();
         } 
         // PRIORIDADE 2: Upload para o ImgBB (com compressão WebP!)
@@ -252,6 +304,10 @@ export async function salvarProduto(e) {
             
             if (dados.success) {
                 fotoUrlFinal = dados.data.url; // Pega o link público gerado
+                const imagemCarrega = await validateImageUrl(fotoUrlFinal);
+                if (!imagemCarrega) {
+                    throw new Error("O ImgBB respondeu, mas a imagem gerada não carregou no navegador. Tente reenviar a foto.");
+                }
             } else {
                 throw new Error("Falha ao salvar a imagem no ImgBB: " + (dados.error?.message || "Erro desconhecido"));
             }
@@ -262,6 +318,15 @@ export async function salvarProduto(e) {
             btn.disabled = false;
             btn.innerText = textoOriginal;
             return alert("Por favor, conclua o recorte da imagem antes de salvar.");
+        }
+
+        if (imagemColadaManual) {
+            const imagemCarrega = await validateImageUrl(fotoUrlFinal);
+            if (!imagemCarrega) {
+                btn.disabled = false;
+                btn.innerText = textoOriginal;
+                return alert("A URL da imagem não carregou. Confira se é um link direto de imagem, de preferência começando com https://i.ibb.co/.");
+            }
         }
 
         let ordemValor = parseInt(document.getElementById('p-ordem').value);
@@ -299,6 +364,11 @@ export async function salvarProduto(e) {
 }
 
 export async function deletarProduto(id) {
+    if (LOCAL_TEST_MODE) {
+        showLocalMutationBlocked('Exclusao de produto');
+        return;
+    }
+
     if(confirm('Apagar este produto?')) {
         await supabase.from('produtos').delete().eq('id', id);
         carregarProdutos();
@@ -310,7 +380,10 @@ export async function atualizarSelectCategorias() {
     if (!select) return;
 
     let listaConfig = window.categoriasCache || [];
-    if (listaConfig.length === 0) {
+    if (LOCAL_TEST_MODE) {
+        listaConfig = getMockConfigLoja().categoriasOrdem || [];
+        window.categoriasCache = listaConfig;
+    } else if (listaConfig.length === 0) {
         const { data } = await supabase.from('config_loja').select('categorias_ordem').limit(1).single();
         if (data && data.categorias_ordem) {
             listaConfig = data.categorias_ordem;
@@ -368,14 +441,16 @@ export async function abrirGaleria() {
     modal.style.display = 'flex';
 
     try {
-        const { data } = await supabase.from('produtos').select('imagem').not('imagem', 'is', null);
+        const data = LOCAL_TEST_MODE
+            ? getMockProductsAdmin().map(p => ({ imagem: p.imagem }))
+            : (await supabase.from('produtos').select('imagem').not('imagem', 'is', null)).data;
         
         if (!data || data.length === 0) {
             grid.innerHTML = '<p style="grid-column: 1/-1; text-align:center;">Nenhuma imagem encontrada no sistema.</p>';
             return;
         }
 
-        const urlsUnicas = [...new Set(data.map(p => p.imagem).filter(url => url && url.startsWith('http')))];
+        const urlsUnicas = [...new Set(data.map(p => sanitizeImageUrl(p.imagem, '')).filter(url => url && url.startsWith('http')))];
 
         grid.innerHTML = '';
         urlsUnicas.forEach(url => {
@@ -386,6 +461,7 @@ export async function abrirGaleria() {
 
             const img = document.createElement('img');
             img.src = url;
+            img.dataset.fallbackSrc = DEFAULT_IMAGE_FALLBACK;
             img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; cursor: pointer;';
             img.onclick = () => selecionarImagemGaleria(url);
 
@@ -401,6 +477,7 @@ export async function abrirGaleria() {
 
             wrapper.appendChild(img);
             wrapper.appendChild(btnDel);
+            attachImageFallbacks(wrapper);
             grid.appendChild(wrapper);
         });
         
@@ -422,6 +499,8 @@ export function fecharGaleria() {
 export function selecionarImagemGaleria(url) {
     document.getElementById('p-foto-url').value = url;
     const preview = document.getElementById('preview-img');
+    preview.dataset.fallbackSrc = DEFAULT_IMAGE_FALLBACK;
+    attachImageFallbacks(preview.parentElement || document);
     preview.src = url;
     preview.style.display = 'block';
     
@@ -432,6 +511,11 @@ export function selecionarImagemGaleria(url) {
 }
 
 export async function deletarImagemGaleria(url) {
+    if (LOCAL_TEST_MODE) {
+        showLocalMutationBlocked('Exclusao de imagem');
+        return;
+    }
+
     if(confirm('🚨 Tem certeza que deseja apagar esta imagem?\n\nEla será removida da galeria, de todos os produtos, e o arquivo físico será apagado do servidor permanentemente.')) {
         try {
             // 1. Tira a foto de todos os produtos que usam esse link no Banco de Dados

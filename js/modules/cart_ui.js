@@ -1,5 +1,6 @@
 /* Manipulação de Interface (DOM) do Carrinho */
 import { loadCart, addToCartLogic, updateQuantityLogic, removeFromCartLogic, getCart, calculateTotals } from './cart_service.js';
+import { escapeHTML, escapeAttribute, formatCurrencyBR, inlineJSString, safeNumber } from './utils.js';
 
 let taxaEntregaAtual = 0;
 
@@ -83,19 +84,27 @@ function renderCartList() {
         return;
     }
 
-    container.innerHTML = cart.map(item => `
+    container.innerHTML = cart.map(item => {
+        const itemId = inlineJSString(item.id);
+        const itemIdAttr = escapeAttribute(item.id);
+        const itemName = escapeHTML(item.name);
+        const itemPrice = formatCurrencyBR(item.price);
+        const itemQuantity = safeNumber(item.quantity, 1);
+        const itemStock = safeNumber(item.estoque, 1);
+
+        return `
         <div class="cart-item">
             <div class="item-info">
-                <span class="item-name">${item.name}</span>
-                <span class="item-price">R$ ${item.price.toFixed(2).replace('.', ',')} un.</span>
+                <span class="item-name">${itemName}</span>
+                <span class="item-price">R$ ${itemPrice} un.</span>
             </div>
             <div class="item-controls">
                 <span class="quantity-label">Qtd:</span>
-                <input type="number" id="qtd-${item.id}" class="quantity-input" value="${item.quantity}" min="1" max="${item.estoque}" oninput="window.updateCartItem('${item.id}', this.value)">
-                <button class="remove-button" onclick="window.removeCartItem('${item.id}')" title="Remover">&times;</button>
+                <input type="number" id="qtd-${itemIdAttr}" class="quantity-input" value="${itemQuantity}" min="1" max="${itemStock}" oninput="window.updateCartItem(${itemId}, this.value)">
+                <button class="remove-button" onclick="window.removeCartItem(${itemId})" title="Remover">&times;</button>
             </div>
         </div>
-    `).join('');
+    `}).join('');
 }
 
 function renderCartTotals() {
@@ -132,7 +141,7 @@ function renderCartTotals() {
         pixLine.innerHTML = `
             <div style="font-weight: bold; text-align: center;">Chave Pix para Pagamento:</div>
             <div style="display: flex; align-items: center; justify-content: space-between; background: #fff; padding: 8px 12px; border-radius: 5px; border: 1px solid #a5d6a7;">
-                <span id="pix-chave-texto" style="word-break: break-all; font-family: monospace; font-size: 1.1em; color: #333;">${chave}</span>
+                <span id="pix-chave-texto" style="word-break: break-all; font-family: monospace; font-size: 1.1em; color: #333;">${escapeHTML(chave)}</span>
                 <button type="button" onclick="copiarChavePix()" style="background: #4caf50; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.9em; margin-left: 10px; white-space: nowrap; font-weight: bold; transition: 0.2s;"><i class="fas fa-copy"></i> Copiar</button>
             </div>
             <div style="font-size: 0.85em; text-align: center; color: #666; margin-top: 4px;">Envie o comprovante no WhatsApp ao finalizar o pedido.</div>

@@ -227,6 +227,9 @@
                             <label for="p-foto-url" style="font-size: 0.9em; color: #555;">Opção 2: Usar uma imagem já existente</label>
                             <div style="display: flex; gap: 10px; margin-bottom: 5px;">
                                 <input type="url" id="p-foto-url" placeholder="https://i.ibb.co/seu-link-aqui.jpg" style="flex: 1; margin: 0;">
+                                <button type="button" onclick="testarImagemProduto()" style="background: #6c757d; color: white; border: none; border-radius: 5px; padding: 0 12px; cursor: pointer; font-weight: bold;">
+                                    Testar
+                                </button>
                                 <button type="button" onclick="abrirGaleria()" style="background: var(--primary); color: white; border: none; border-radius: 5px; padding: 0 15px; cursor: pointer; font-weight: bold;">
                                     <i class="fas fa-images"></i> Ver Galeria
                                 </button>
@@ -380,6 +383,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
-    <script type="module" src="js/admin.js"></script>
+    <script type="module" src="js/admin.js?v=2"></script>
 </body>
 </html>

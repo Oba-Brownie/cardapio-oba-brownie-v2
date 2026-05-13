@@ -4,9 +4,20 @@
 /* ================================================= */
 
 import { supabase } from '../config/supabase-config.js';
+import { LOCAL_TEST_MODE, getMockConfigLoja, showLocalMutationBlocked } from '../modules/local_test_mode.js';
+import { escapeHTML, escapeAttribute, inlineJSString } from '../modules/utils.js';
 
 // === CONFIGURAÇÕES GERAIS ===
 export async function carregarConfiguracoes() {
+    if (LOCAL_TEST_MODE) {
+        const data = getMockConfigLoja();
+        document.getElementById('conf-msg-fechado').value = data.mensagemFechado || '';
+        document.getElementById('conf-pix').value = data.chavePix || '';
+        window.categoriasCache = data.categoriasOrdem || [];
+        renderizarListaCategoriasConfig();
+        return;
+    }
+
     const { data } = await supabase.from('config_loja').select('mensagem_fechado, chave_pix, categorias_ordem').limit(1).single();
     if (data) {
         document.getElementById('conf-msg-fechado').value = data.mensagem_fechado || "";
@@ -18,6 +29,11 @@ export async function carregarConfiguracoes() {
 }
 
 export async function salvarConfiguracoesGerais() {
+    if (LOCAL_TEST_MODE) {
+        showLocalMutationBlocked('Salvar configuracoes');
+        return;
+    }
+
     const btn = document.getElementById('btn-salvar-config');
     const textoOriginal = btn.innerText;
     btn.innerText = "Salvando...";
@@ -57,13 +73,16 @@ export function renderizarListaCategoriasConfig() {
     window.categoriasCache.forEach((cat, index) => {
         const item = document.createElement('div');
         item.className = 'cat-sortable-item'; 
-        item.dataset.nome = cat; 
+        item.dataset.nome = cat;
+        const categoriaNome = escapeHTML(cat);
+        const categoriaDataset = escapeAttribute(cat);
+        const indexArg = inlineJSString(index);
         item.innerHTML = `
             <div style="display:flex; align-items:center; flex:1">
                 <i class="fas fa-grip-lines drag-handle" title="Segure e arraste"></i>
-                <span style="font-weight:bold; color:#333;">${cat}</span>
+                <span style="font-weight:bold; color:#333;" data-categoria="${categoriaDataset}">${categoriaNome}</span>
             </div>
-            <button onclick="removerCategoria(${index})" style="cursor:pointer; border:none; background:#ffebee; color:red; padding:8px 12px; border-radius:5px; transition:0.2s">
+            <button onclick="removerCategoria(${indexArg})" style="cursor:pointer; border:none; background:#ffebee; color:red; padding:8px 12px; border-radius:5px; transition:0.2s">
                 <i class="fas fa-trash"></i>
             </button>
         `;
@@ -115,6 +134,11 @@ export function removerCategoria(index) {
 }
 
 export async function salvarOrdemCategorias() {
+    if (LOCAL_TEST_MODE) {
+        showLocalMutationBlocked('Salvar ordem de categorias');
+        return;
+    }
+
     const { data: config } = await supabase.from('config_loja').select('id').limit(1).single();
     await supabase.from('config_loja').update({ categorias_ordem: window.categoriasCache }).eq('id', config.id);
     

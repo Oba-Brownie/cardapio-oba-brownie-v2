@@ -5,6 +5,7 @@
 
 import { supabase } from '../config/supabase-config.js';
 import { state } from './state.js';
+import { LOCAL_TEST_MODE, showLocalMutationBlocked } from '../modules/local_test_mode.js';
 
 function atualizarBotaoStatus(estaAberta) {
     const btn = document.getElementById('btn-status-toggle');
@@ -24,12 +25,22 @@ function atualizarBotaoStatus(estaAberta) {
 export async function carregarStatusInicial() {
     const btn = document.getElementById('btn-status-toggle');
     if (!btn) return;
+
+    if (LOCAL_TEST_MODE) {
+        atualizarBotaoStatus(true);
+        return;
+    }
     
     const { data } = await supabase.from('config_loja').select('loja_aberta').limit(1).single();
     atualizarBotaoStatus(data ? data.loja_aberta : false);
 }
 
 export async function toggleLojaStatus() {
+    if (LOCAL_TEST_MODE) {
+        showLocalMutationBlocked('Alteracao de status da loja');
+        return;
+    }
+
     const btn = document.getElementById('btn-status-toggle');
     const novoStatus = !state.lojaEstaAberta;
     

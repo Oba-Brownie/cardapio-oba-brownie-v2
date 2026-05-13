@@ -85,6 +85,12 @@
   object-fit: cover; 
   border-radius: 8px; 
 }
+.product-image.image-fallback,
+.card-destaque img.image-fallback {
+  object-fit: contain;
+  background: #fff3f7;
+  border: 1px dashed #f8b4cb;
+}
 .add-button { 
   position: absolute; 
   bottom: -10px; left: 50%; 

@@ -4,6 +4,7 @@
 /* ================================================= */
 
 import { supabase } from '../config/supabase-config.js';
+import { LOCAL_TEST_MODE, getMockPedidos } from '../modules/local_test_mode.js';
 
 export async function gerarRelatorio() {
     const dataInicioInput = document.getElementById('rel-data-inicio').value;
@@ -23,12 +24,14 @@ export async function gerarRelatorio() {
         const dataFim = new Date(dataFimInput + 'T23:59:59').toISOString();
 
         // Continua leve! Puxa apenas o valor e os itens do banco
-        const { data: pedidos, error } = await supabase
-            .from('pedidos')
-            .select('total, itens')
-            .gte('data', dataInicio)
-            .lte('data', dataFim)
-            .neq('status', 'Cancelado'); 
+        const { data: pedidos, error } = LOCAL_TEST_MODE
+            ? { data: getMockPedidos().filter(p => p.status !== 'Cancelado'), error: null }
+            : await supabase
+                .from('pedidos')
+                .select('total, itens')
+                .gte('data', dataInicio)
+                .lte('data', dataFim)
+                .neq('status', 'Cancelado');
 
         if (error) throw error;
 
@@ -66,12 +69,20 @@ export async function gerarRelatorio() {
 
         produtosOrdenados.forEach((prod, index) => {
             const medalha = index === 0 ? '🥇' : (index === 1 ? '🥈' : (index === 2 ? '🥉' : '▪️'));
-            listaDiv.innerHTML += `
-                <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #eee;">
-                    <span style="font-weight: bold; color: #555;">${medalha} ${prod.nome}</span>
-                    <span style="background: var(--primary); color: white; padding: 2px 10px; border-radius: 20px; font-size: 0.9em;">${prod.quantidade} un.</span>
-                </div>
-            `;
+            const row = document.createElement('div');
+            row.style.cssText = 'display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #eee;';
+
+            const nome = document.createElement('span');
+            nome.style.cssText = 'font-weight: bold; color: #555;';
+            nome.textContent = `${medalha} ${prod.nome}`;
+
+            const quantidade = document.createElement('span');
+            quantidade.style.cssText = 'background: var(--primary); color: white; padding: 2px 10px; border-radius: 20px; font-size: 0.9em;';
+            quantidade.textContent = `${prod.quantidade} un.`;
+
+            row.appendChild(nome);
+            row.appendChild(quantidade);
+            listaDiv.appendChild(row);
         });
 
         containerResultado.style.display = 'block';
@@ -123,7 +134,7 @@ function exportarParaExcel(dataI, dataF, faturamento, qtdPedidos, produtos) {
     
     // Preenche as linhas com os produtos
     produtos.forEach(p => {
-        csvContent += `${p.nome};${p.quantidade}\n`;
+        csvContent += `${sanitizarCelulaCsv(p.nome)};${p.quantidade}\n`;
     });
 
     // Adiciona o BOM (Byte Order Mark) para forçar o Excel a ler os acentos corretamente (UTF-8)
@@ -141,4 +152,10 @@ function exportarParaExcel(dataI, dataF, faturamento, qtdPedidos, produtos) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+}
+
+function sanitizarCelulaCsv(value) {
+    const texto = String(value ?? '').replace(/"/g, '""');
+    const protegido = /^[=+\-@]/.test(texto) ? `'${texto}` : texto;
+    return `"${protegido}"`;
 }

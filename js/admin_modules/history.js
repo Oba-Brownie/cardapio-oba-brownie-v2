@@ -5,6 +5,8 @@
 
 import { supabase } from '../config/supabase-config.js';
 import { verDetalhesPedido, imprimirPedido, enviarWhatsAppEntregador } from './orders.js';
+import { escapeHTML, formatCurrencyBR, inlineJSString, safeCssToken } from '../modules/utils.js';
+import { LOCAL_TEST_MODE, getMockPedidos, showLocalMutationBlocked } from '../modules/local_test_mode.js';
 
 // === UTILITÁRIOS DE DATA ===
 function corrigirDataUTC(dataString) {
@@ -33,12 +35,14 @@ export async function carregarHistorico() {
     hoje.setHours(0, 0, 0, 0);
     const inicioDoDia = hoje.toISOString();
 
-    const { data } = await supabase
-        .from('pedidos')
-        .select('id, data, cliente_nome, total, status') // Otimizado!
-        .lt('data', inicioDoDia)
-        .order('data', { ascending: false })
-        .limit(50);
+    const data = LOCAL_TEST_MODE
+        ? getMockPedidos()
+        : (await supabase
+            .from('pedidos')
+            .select('id, data, cliente_nome, total, status') // Otimizado!
+            .lt('data', inicioDoDia)
+            .order('data', { ascending: false })
+            .limit(50)).data;
     
     if (!data || data.length === 0) { 
         div.innerHTML = '<p style="text-align:center; padding:20px">Nenhum pedido antigo encontrado.</p>'; 
@@ -60,25 +64,27 @@ export async function carregarHistorico() {
     
     data.forEach(p => {
         const dataPed = formatarDataBR(p.data);
-        const statusBadge = `<span class="badge-status badge-${p.status.replace(' ', '')}">${p.status}</span>`;
+        const idArg = inlineJSString(p.id);
+        const status = escapeHTML(p.status);
+        const statusBadge = `<span class="badge-status badge-${safeCssToken(String(p.status ?? '').replace(/\s+/g, ''))}">${status}</span>`;
         
         html += `
             <tr>
                 <td>${dataPed}</td>
-                <td>${p.cliente_nome}</td>
-                <td>R$ ${parseFloat(p.total).toFixed(2).replace('.', ',')}</td>
+                <td>${escapeHTML(p.cliente_nome)}</td>
+                <td>R$ ${formatCurrencyBR(p.total)}</td>
                 <td>${statusBadge}</td>
                 <td style="text-align:center">
-                    <button onclick="enviarWhatsAppEntregador('${p.id}')" style="cursor:pointer; border:none; background:transparent; color:#2e7d32; font-size:1.1em; margin-right:8px" title="Mandar p/ Entregador">
+                    <button onclick="enviarWhatsAppEntregador(${idArg})" style="cursor:pointer; border:none; background:transparent; color:#2e7d32; font-size:1.1em; margin-right:8px" title="Mandar p/ Entregador">
                         <i class="fab fa-whatsapp"></i>
                     </button>
-                    <button onclick="verDetalhesPedido('${p.id}')" style="cursor:pointer; border:none; background:transparent; color:#1976d2; font-size:1.1em; margin-right:8px" title="Ver Detalhes">
+                    <button onclick="verDetalhesPedido(${idArg})" style="cursor:pointer; border:none; background:transparent; color:#1976d2; font-size:1.1em; margin-right:8px" title="Ver Detalhes">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button onclick="imprimirPedido('${p.id}')" style="cursor:pointer; border:none; background:transparent; color:#555; font-size:1.1em; margin-right:8px" title="Reimprimir">
+                    <button onclick="imprimirPedido(${idArg})" style="cursor:pointer; border:none; background:transparent; color:#555; font-size:1.1em; margin-right:8px" title="Reimprimir">
                         <i class="fas fa-print"></i>
                     </button>
-                    <button onclick="excluirPedidoHistorico('${p.id}')" style="cursor:pointer; border:none; background:transparent; color:#c62828; font-size:1.1em" title="Excluir">
+                    <button onclick="excluirPedidoHistorico(${idArg})" style="cursor:pointer; border:none; background:transparent; color:#c62828; font-size:1.1em" title="Excluir">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -104,6 +110,11 @@ export function filtrarHistorico(termo) {
 
 // === AÇÕES ===
 export async function excluirPedidoHistorico(id) {
+    if (LOCAL_TEST_MODE) {
+        showLocalMutationBlocked('Exclusao de pedido do historico');
+        return;
+    }
+
     if (confirm("Tem certeza que deseja EXCLUIR este pedido do histórico?")) {
         const { error } = await supabase.from('pedidos').delete().eq('id', id);
         if (error) {

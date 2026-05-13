@@ -1,4 +1,16 @@
-const CACHE_NAME = 'oba-brownie-imagens-v2'; // Mudamos a versão para forçar a atualização
+const CACHE_NAME = 'oba-brownie-imagens-v3';
+
+function isCacheableImageRequest(event, url) {
+    if (event.request.method !== 'GET') return false;
+
+    const isImageRequest = event.request.destination === 'image';
+    const isImgBBImage = url.hostname === 'i.ibb.co' && isImageRequest;
+    const isSupabaseStorageImage = url.hostname.endsWith('.supabase.co')
+        && url.pathname.includes('/storage/v1/object/')
+        && isImageRequest;
+
+    return isImgBBImage || isSupabaseStorageImage;
+}
 
 self.addEventListener('install', (event) => {
     self.skipWaiting();
@@ -9,7 +21,7 @@ self.addEventListener('activate', (event) => {
         caches.keys().then((cacheNames) => {
             return Promise.all(
                 cacheNames.map((cacheName) => {
-                    // Apaga o cache velho (v1) quando o novo (v2) assumir
+                    // Apaga caches velhos quando uma nova estrategia assumir.
                     if (cacheName !== CACHE_NAME) {
                         return caches.delete(cacheName);
                     }
@@ -22,8 +34,9 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
-    // AGORA ELE INTERCEPTA TANTO O IMGBB QUANTO O SUPABASE!
-    if (url.origin.includes('i.ibb.co') || url.origin.includes('supabase.co')) {
+    // Cacheia apenas arquivos de imagem. Nunca cachear REST/Auth/Realtimes do Supabase,
+    // porque isso pode esconder produtos, pedidos ou status atualizados.
+    if (isCacheableImageRequest(event, url)) {
         event.respondWith(
             caches.match(event.request).then((cachedResponse) => {
                 // Se a foto já está no celular, devolve de graça (0 tráfego!)

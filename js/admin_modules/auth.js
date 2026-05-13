@@ -4,10 +4,17 @@
 /* ================================================= */
 
 import { supabase } from '../config/supabase-config.js';
+import { LOCAL_TEST_MODE } from '../modules/local_test_mode.js';
 
 // === CONTROLO DE SESSÃO ===
 export async function verificarSessao() {
     document.getElementById('admin-content').style.display = 'none';
+
+    if (LOCAL_TEST_MODE) {
+        liberarPainel();
+        return;
+    }
+
     const { data: { session } } = await supabase.auth.getSession();
     
     if (session) liberarPainel();
@@ -15,6 +22,11 @@ export async function verificarSessao() {
 }
 
 export async function login() {
+    if (LOCAL_TEST_MODE) {
+        liberarPainel();
+        return;
+    }
+
     const email = document.getElementById('login-email').value;
     const pass = document.getElementById('login-password').value;
     const msg = document.getElementById('login-msg');
@@ -41,6 +53,11 @@ export async function login() {
 }
 
 export async function logout() {
+    if (LOCAL_TEST_MODE) {
+        window.location.reload();
+        return;
+    }
+
     await supabase.auth.signOut();
     window.location.reload();
 }

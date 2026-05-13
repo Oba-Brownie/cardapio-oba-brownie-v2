@@ -17,6 +17,22 @@
     <div id="splash-screen" class="splash-screen">
         <img src="images/splash.png" alt="Logo Oba Brownie">
     </div>
+    <script>
+        window.hideObaSplashFallback = function () {
+            var splash = document.getElementById('splash-screen');
+            if (!splash || splash.classList.contains('hidden')) return;
+            splash.style.opacity = '0';
+            splash.style.transition = 'opacity 0.35s ease';
+            window.setTimeout(function () {
+                splash.style.display = 'none';
+                splash.classList.add('hidden');
+            }, 400);
+        };
+
+        window.setTimeout(window.hideObaSplashFallback, 3500);
+        window.addEventListener('error', window.hideObaSplashFallback);
+        window.addEventListener('unhandledrejection', window.hideObaSplashFallback);
+    </script>
 
     <header>
         <div class="header-small">
@@ -203,7 +219,7 @@
         </div>
     </div>
 
-    <script type="module" src="js/main.js?v=6"></script>
+    <script type="module" src="js/main.js?v=7"></script>
 
 </body>
 </html>
