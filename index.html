@@ -9,9 +9,10 @@
     <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16x16.png">
     <link rel="manifest" href="images/site.webmanifest">
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=visual-3">
 </head>
-<body>    
+<body>
+    <a class="skip-link" href="#cardapio">Pular para o cardápio</a>
     <div id="notificacao-carrinho" class="notificacao-carrinho"></div>
 
     <div id="splash-screen" class="splash-screen">
@@ -43,7 +44,7 @@
         </a>
     </header>
 
-    <main>
+    <main id="cardapio">
         <div class="top-info-container">
             <div class="left-info">
                 <img src="images/melhor-hora.png" alt="Bora adoçar o dia?" class="info-image-left">
@@ -53,7 +54,7 @@
                     <img src="images/encomendas.png" alt="Encomendas para eventos em geral" class="info-image-right">
                 </div>
                 <div class="encomenda-whatsapp-container">
-                    <a href="https://wa.me/5599991675891" class="encomenda-button" target="_blank">
+                    <a href="https://wa.me/5599991675891" class="encomenda-button" target="_blank" rel="noopener">
                         <span class="whatsapp-label">
                             <img src="images/icons8-whatsapp-502.png" alt="WhatsApp" class="whatsapp-icon-image">
                             WhatsApp
@@ -62,7 +63,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div id="aviso-loja-fechada" class="aviso-loja-fechada"></div>
         <section id="destaques-section" class="destaques-section"></section>
 
@@ -72,7 +73,7 @@
     <section class="checkout-area">
         <div class="customer-details">
             <h2>Seus Dados</h2>
-            
+
             <div id="scheduling-info-box" class="scheduling-info-box" style="display: none;">
                 <p><strong>Data do Pedido:</strong> <span id="next-day-date"></span></p>
                 <p>Seu pedido agendado só será confirmado após o envio do comprovante de pagamento via Pix.</p>
@@ -86,11 +87,11 @@
 
             <div class="form-group">
                 <label for="customer-name">Nome Completo</label>
-                <input type="text" id="customer-name" placeholder="Digite seu nome">
+                <input type="text" id="customer-name" placeholder="Digite seu nome" autocomplete="name">
             </div>
             <div class="form-group">
                 <label for="customer-phone">Seu WhatsApp</label>
-                <input type="tel" id="customer-phone" placeholder="(99) 99999-9999">
+                <input type="tel" id="customer-phone" placeholder="(99) 99999-9999" autocomplete="tel" inputmode="tel">
             </div>
 
             <div class="form-group">
@@ -119,11 +120,11 @@
                 </div>
                 <div class="form-group">
                     <label for="customer-address">Endereço (Rua e Número)</label>
-                    <input type="text" id="customer-address" placeholder="Ex: Rua das Flores, 123">
+                    <input type="text" id="customer-address" placeholder="Ex: Rua das Flores, 123" autocomplete="street-address">
                 </div>
                 <div class="form-group">
                     <label for="customer-reference">Ponto de Referência (Opcional)</label>
-                    <input type="text" id="customer-reference" placeholder="Ex: Próximo ao mercado, casa azul">
+                    <input type="text" id="customer-reference" placeholder="Ex: Próximo ao mercado, casa azul" autocomplete="off">
                 </div>
             </div>
 
@@ -131,15 +132,15 @@
                 <label for="customer-observation">Observação (Opcional)</label>
                 <textarea id="customer-observation" rows="6" placeholder="Informações para o pedido, ex: Caso seja para outra pessoa, informe o nome de quem irá receber."></textarea>
             </div>
-            
+
             <div class="cupom-section">
                 <label class="cupom-label" for="cupom-input">Tem um Cupom de Desconto?</label>
-                
+
                 <div class="cupom-input-group">
-                    <input type="text" id="cupom-input" class="cupom-input" placeholder="EX: OBA10">
+                    <input type="text" id="cupom-input" class="cupom-input" placeholder="EX: OBA10" autocomplete="off">
                     <button type="button" id="btn-aplicar-cupom" class="cupom-btn" onclick="aplicarCupom()">Aplicar</button>
                 </div>
-                
+
                 <p id="cupom-msg" class="cupom-msg"></p>
             </div>
 
@@ -170,17 +171,17 @@
                     <span>Subtotal:</span>
                     <span id="subtotal-cart">R$ 0,00</span>
                 </div>
-                
+
                 <div class="total-line discount-line" id="discount-line">
                     <span>Desconto (<span id="discount-name-label">Cupom</span>):</span>
                     <span id="discount-cart-value">- R$ 0,00</span>
                 </div>
-                
+
                 <div class="total-line" id="delivery-fee-line">
                     <span>Taxa de Entrega:</span>
                     <span id="taxa-entrega-cart">R$ 0,00</span>
                 </div>
-                
+
                 <div class="total-line final-total">
                     <span>Total:</span>
                     <span id="cart-total">R$ 0,00</span>
@@ -190,10 +191,10 @@
     </section>
 
     <div class="final-checkout-button-container">
-        <button id="checkout-button">Enviar Pedido no WhatsApp</button>
+        <button id="checkout-button" type="button">Enviar Pedido no WhatsApp</button>
     </div>
 
-    <div id="carrinho-flutuante" class="carrinho-flutuante">
+    <div id="carrinho-flutuante" class="carrinho-flutuante" role="button" tabindex="0" aria-label="Abrir carrinho">
         <div class="icone-carrinho">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
             <span id="contador-carrinho" class="contador-carrinho">0</span>
@@ -205,21 +206,21 @@
             <div class="modal-sucesso-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
             </div>
-            
+
             <h2>Pedido Registrado!</h2>
             <p>Seu pedido foi salvo com sucesso no nosso sistema. <strong>Clique no botão abaixo</strong> para enviar a mensagem no WhatsApp e darmos início ao preparo!</p>
-            
+
             <a id="btn-ir-whatsapp" href="#" target="_blank" class="btn-sucesso-whatsapp">
                 <img src="images/icons8-whatsapp-502.png" alt="WhatsApp"> ENVIAR PARA O WHATSAPP
             </a>
-            
+
             <button onclick="fecharModalSucesso()" class="btn-sucesso-fechar">
                 Fechar e voltar ao cardápio
             </button>
         </div>
     </div>
 
-    <script type="module" src="js/main.js?v=7"></script>
+    <script type="module" src="js/main.js?v=visual-3"></script>
 
 </body>
 </html>
