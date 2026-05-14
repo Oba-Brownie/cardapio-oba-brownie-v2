@@ -3,6 +3,7 @@ import { LISTA_BAIRROS } from '../config/constants.js';
 import { getCart, clearCart } from './cart_service.js';
 import { getCurrentCartValues, setTaxaEntregaUI } from './cart_ui.js'; // <-- A calculadora certa está aqui!
 import { LOCAL_TEST_MODE } from './local_test_mode.js';
+import { copyToClipboard, escapeHTML, formatCurrencyBR, safeNumber } from './utils.js';
 
 const audioConfirmacao = new Audio('audio/confirmar_encomenda.mp3');
 
@@ -46,10 +47,6 @@ function setupEventListeners(canShop) {
             const val = event.target.value;
             const trocoSection = document.getElementById('troco-section');
             const taxaInfoBox = document.getElementById('taxa-info');
-
-            if (val === 'Pix') {
-                if (window.openPixPopup) window.openPixPopup();
-            }
 
             if (val === 'Dinheiro') {
                 trocoSection.style.display = 'block';
@@ -150,14 +147,13 @@ async function handleCheckout() {
         if (!scheduledTime) return alert("Por favor, selecione um horário para a entrega ou retirada.");
     }
 
-    if (paymentMethod === 'Pix') {
-        if (LOCAL_TEST_MODE) {
-            return finalizarPedidoMockado();
-        }
-
-        const copiouChave = confirm("⚠️ ATENÇÃO ⚠️\n\nComo seu pagamento é via Pix, você precisará enviar o COMPROVANTE no nosso WhatsApp para que o pedido seja preparado.\n\nVocê já copiou a nossa Chave Pix?\nClique em 'OK' para continuar.");
-        if (!copiouChave) return;
-    }
+    const confirmouRevisao = await abrirModalRevisaoPedido({
+        cart,
+        cartValues,
+        paymentMethod,
+        deliveryType
+    });
+    if (!confirmouRevisao) return;
 
     if (LOCAL_TEST_MODE) {
         return finalizarPedidoMockado();
@@ -366,4 +362,151 @@ function finalizarPedidoMockado() {
     }
 
     alert('Pedido simulado localmente');
+}
+
+function abrirModalRevisaoPedido({ cart, cartValues, paymentMethod, deliveryType }) {
+    return new Promise((resolve) => {
+        const modal = getOrCreateReviewModal();
+        const isPix = paymentMethod === 'Pix';
+        const isCard = paymentMethod.includes('Cartão');
+        const subtotal = cartValues.subtotal;
+        const desconto = cartValues.desconto || 0;
+        const frete = deliveryType === 'delivery' ? cartValues.frete : 0;
+        const taxaCartao = cartValues.taxaCartao || 0;
+        const total = (subtotal - desconto) + frete + taxaCartao;
+        const chavePix = window.chavePixLoja || 'obabrownie2025@gmail.com';
+        const tipoTaxaCartao = paymentMethod.toLowerCase().includes('crédito') || paymentMethod.toLowerCase().includes('credito')
+            ? 'crédito'
+            : 'débito';
+
+        const itemsHtml = cart.map(item => {
+            const quantity = safeNumber(item.quantity, 1);
+            const price = safeNumber(item.price);
+            const itemTotal = quantity * price;
+
+            return `
+                <div class="order-review-item">
+                    <div>
+                        <strong>${quantity}x ${escapeHTML(item.name)}</strong>
+                        <span>R$ ${formatCurrencyBR(price)} un.</span>
+                    </div>
+                    <strong>R$ ${formatCurrencyBR(itemTotal)}</strong>
+                </div>
+            `;
+        }).join('');
+
+        const discountHtml = desconto > 0
+            ? `<div class="order-review-row discount"><span>Desconto</span><strong>- R$ ${formatCurrencyBR(desconto)}</strong></div>`
+            : '';
+        const cardFeeHtml = taxaCartao > 0
+            ? `<div class="order-review-row warning"><span>Taxa do cartão (${tipoTaxaCartao})</span><strong>R$ ${formatCurrencyBR(taxaCartao)}</strong></div>`
+            : '';
+        const pixHtml = isPix ? `
+            <div class="order-review-pix">
+                <div>
+                    <span>Chave Pix</span>
+                    <strong id="order-review-pix-key">${escapeHTML(chavePix)}</strong>
+                </div>
+                <button type="button" id="order-review-copy-pix" class="order-review-copy">
+                    Copiar Pix
+                </button>
+            </div>
+            <p id="order-review-pix-feedback" class="order-review-feedback" role="status" aria-live="polite"></p>
+        ` : '';
+        const noteText = isPix
+            ? 'Seu pedido apenas será confirmado após o envio do comprovante no nosso WhatsApp.'
+            : (isCard ? 'No cartão cobramos taxa.' : 'Confira os dados antes de confirmar o envio do pedido.');
+
+        modal.innerHTML = `
+            <div class="order-review-dialog" role="dialog" aria-modal="true" aria-labelledby="order-review-title">
+                <div class="order-review-header">
+                    <div>
+                        <span>Revise seu pedido</span>
+                        <h2 id="order-review-title">Está tudo certinho?</h2>
+                    </div>
+                    <button type="button" class="order-review-close" aria-label="Voltar para editar">
+                        &times;
+                    </button>
+                </div>
+
+                <div class="order-review-body">
+                    <div class="order-review-items">${itemsHtml}</div>
+
+                    <div class="order-review-totals">
+                        <div class="order-review-row"><span>Subtotal dos produtos</span><strong>R$ ${formatCurrencyBR(subtotal)}</strong></div>
+                        ${discountHtml}
+                        <div class="order-review-row"><span>Taxa de entrega</span><strong>R$ ${formatCurrencyBR(frete)}</strong></div>
+                        ${cardFeeHtml}
+                        <div class="order-review-row total"><span>Total</span><strong>R$ ${formatCurrencyBR(total)}</strong></div>
+                    </div>
+
+                    ${pixHtml}
+
+                    <div class="order-review-note ${isPix ? 'pix' : isCard ? 'card' : ''}">
+                        <strong aria-hidden="true">!</strong>
+                        <span>${escapeHTML(noteText)}</span>
+                    </div>
+                </div>
+
+                <div class="order-review-actions">
+                    <button type="button" class="order-review-back">Voltar</button>
+                    <button type="button" class="order-review-confirm" ${isPix ? 'disabled' : ''}>
+                        Confirmar pedido
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.classList.add('order-review-open');
+        modal.classList.add('visible');
+
+        const close = (confirmed) => {
+            modal.classList.remove('visible');
+            document.body.classList.remove('order-review-open');
+            resolve(confirmed);
+        };
+
+        modal.querySelector('.order-review-close').addEventListener('click', () => close(false));
+        modal.querySelector('.order-review-back').addEventListener('click', () => close(false));
+        modal.onclick = (event) => {
+            if (event.target === modal) close(false);
+        };
+
+        const confirmButton = modal.querySelector('.order-review-confirm');
+        confirmButton.addEventListener('click', () => close(true));
+
+        const copyButton = modal.querySelector('#order-review-copy-pix');
+        if (copyButton) {
+            copyButton.addEventListener('click', async () => {
+                const feedback = modal.querySelector('#order-review-pix-feedback');
+
+                try {
+                    const copied = await copyToClipboard(chavePix);
+                    if (!copied) throw new Error('Clipboard indisponível');
+
+                    copyButton.textContent = 'Pix copiado';
+                    copyButton.classList.add('copied');
+                    confirmButton.disabled = false;
+                    if (feedback) feedback.textContent = 'Chave Pix copiada. Agora você pode confirmar o pedido.';
+                } catch (error) {
+                    confirmButton.disabled = true;
+                    if (feedback) feedback.textContent = 'Não conseguimos copiar automaticamente. Toque e segure na chave para copiar.';
+                }
+            });
+        }
+
+        if (copyButton) copyButton.focus();
+        else confirmButton.focus();
+    });
+}
+
+function getOrCreateReviewModal() {
+    let modal = document.getElementById('order-review-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'order-review-modal';
+        modal.className = 'order-review-modal';
+        document.body.appendChild(modal);
+    }
+    return modal;
 }

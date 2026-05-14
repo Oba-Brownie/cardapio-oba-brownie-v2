@@ -50,41 +50,6 @@ window.removeCartItem = (id) => {
     if(window.cupomAplicado) window.atualizarResumoDesconto();
 };
 
-window.copiarChavePix = () => {
-    const chaveEl = document.getElementById('pix-chave-texto');
-    if (!chaveEl) return;
-
-    const chave = chaveEl.innerText;
-    navigator.clipboard.writeText(chave).then(() => {
-        const btn = document.querySelector('#pix-key-line button');
-        const feedback = document.getElementById('pix-copy-feedback');
-
-        if (btn) {
-            btn.innerHTML = '<i class="fas fa-check"></i> Copiado';
-            btn.classList.add('pix-copy-button-copied');
-            btn.setAttribute('aria-label', 'Chave Pix copiada');
-        }
-
-        if (feedback) {
-            feedback.textContent = 'Chave Pix copiada.';
-            feedback.classList.add('visible');
-        }
-
-        setTimeout(() => {
-            if (btn) {
-                btn.innerHTML = '<i class="fas fa-copy"></i> Copiar';
-                btn.classList.remove('pix-copy-button-copied');
-                btn.setAttribute('aria-label', 'Copiar chave Pix');
-            }
-
-            if (feedback) {
-                feedback.classList.remove('visible');
-                feedback.textContent = '';
-            }
-        }, 2000);
-    }).catch(() => alert("Erro ao copiar a chave."));
-};
-
 document.addEventListener('change', (e) => {
     if (e.target.id === 'payment-method') renderCartTotals();
 });
@@ -151,35 +116,6 @@ function renderCartTotals() {
             document.getElementById('taxa-cartao-value').innerText = `R$ ${values.taxaCartao.toFixed(2).replace('.', ',')}`;
         } else {
             taxaCartaoLine.style.display = 'none';
-        }
-    }
-
-    let pixLine = document.getElementById('pix-key-line');
-    if (!pixLine && elTotal) {
-        pixLine = document.createElement('div');
-        pixLine.id = 'pix-key-line';
-        pixLine.className = 'pix-key-line';
-        const chave = window.chavePixLoja || 'obabrownie2025@gmail.com';
-        pixLine.innerHTML = `
-            <div class="pix-key-title">Chave Pix para pagamento</div>
-            <div class="pix-key-card">
-                <span id="pix-chave-texto" class="pix-key-text">${escapeHTML(chave)}</span>
-                <button type="button" class="pix-copy-button" onclick="copiarChavePix()" aria-label="Copiar chave Pix"><i class="fas fa-copy"></i> Copiar</button>
-            </div>
-            <div id="pix-copy-feedback" class="pix-copy-feedback" role="status" aria-live="polite"></div>
-            <div class="pix-key-hint">Envie o comprovante no WhatsApp ao finalizar o pedido.</div>
-        `;
-        elTotal.parentElement.parentNode.insertBefore(pixLine, elTotal.parentElement);
-    }
-
-    if (pixLine) {
-        const paySelect = document.getElementById('payment-method');
-        if (paySelect && paySelect.value.toLowerCase().includes('pix')) {
-            pixLine.style.display = 'flex';
-            const chaveTexto = document.getElementById('pix-chave-texto');
-            if (chaveTexto && window.chavePixLoja) chaveTexto.innerText = window.chavePixLoja;
-        } else {
-            pixLine.style.display = 'none';
         }
     }
 
