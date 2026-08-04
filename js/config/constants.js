@@ -13,7 +13,7 @@ export const DADOS_LOJA = {
 };
 
 const RAW_BAIRROS = [ 
-    { nome: "Barra Azul", taxa: 5.00 }, 
+    { nome: "Barra Azul", taxa: 6.00 }, 
     { nome: "Baixão(depois do teatro)", taxa: 10.00 }, 
     { nome: "Bairro Matadouro", taxa: 5.00 }, 
     { nome: "Bom Jardim", taxa: 8.00 }, 
@@ -54,7 +54,8 @@ const RAW_BAIRROS = [
     { nome: "Vila Juscelino", taxa: 10.00},
     { nome: "Vila Maranhão", taxa: 7.00 }, 
     { nome: "Vila São Francisco", taxa: 9.00 }, 
-    { nome: "Vila Sucuri", taxa: 7.00 } 
+    { nome: "Vila Sucuri", taxa: 7.00 },
+    { nomw: "Vila Progresso II", taxa: 9.00 }
 ];
 
 export const LISTA_BAIRROS = [...RAW_BAIRROS].sort((a, b) => a.nome.localeCompare(b.nome));
