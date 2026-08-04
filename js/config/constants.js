@@ -55,7 +55,7 @@ const RAW_BAIRROS = [
     { nome: "Vila Maranhão", taxa: 7.00 }, 
     { nome: "Vila São Francisco", taxa: 9.00 }, 
     { nome: "Vila Sucuri", taxa: 7.00 },
-    { nomw: "Vila Progresso II", taxa: 9.00 }
+    { nome: "Vila Progresso II", taxa: 9.00 }
 ];
 
 export const LISTA_BAIRROS = [...RAW_BAIRROS].sort((a, b) => a.nome.localeCompare(b.nome));
