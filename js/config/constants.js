@@ -26,7 +26,7 @@ const RAW_BAIRROS = [
     { nome: "IFMA", taxa: 9.00},
     { nome: "Jacu", taxa: 7.00 }, 
     { nome: "Jardim América", taxa: 9.00 }, 
-    { nome: "Jardim Aulidia", taxa: 10.00 }, 
+    { nome: "Jardim Aulidia", taxa: 11.00 }, 
     { nome: "Jardim de Alah", taxa: 8.00 }, 
     { nome: "Jardim Glória I", taxa: 8.00 }, 
     { nome: "Jardim Glória II", taxa: 8.00 }, 
