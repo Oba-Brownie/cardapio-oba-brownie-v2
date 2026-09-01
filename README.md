@@ -7,7 +7,7 @@ Um sistema completo de cardápio digital e gestão de pedidos focado em alta per
 Este projeto foi construído pensando em escalabilidade e economia de recursos, contornando limites de planos gratuitos de Backend as a Service (BaaS):
 
 * **Modularização (Vanilla JS):** Arquitetura baseada em ES6 Modules, separando regras de negócio (Services) de manipulação de interface (UI DOM), garantindo um código limpo e manutenível.
-* **Armazenamento Descentralizado:** Upload de imagens integrado diretamente à API do **ImgBB**, salvando apenas as URLs no banco de dados para poupar 100% da banda de rede do servidor principal.
+* **Armazenamento Descentralizado:** Upload de imagens integrado diretamente à API do **Cloudinary** com preset unsigned, salvando apenas as URLs no banco de dados para poupar 100% da banda de rede do servidor principal.
 * **Recorte de Imagem Client-Side:** Uso do `Cropper.js` para padronizar, comprimir (WebP) e redimensionar imagens no próprio navegador do administrador antes do upload.
 * **Consultas Otimizadas:** Buscas no banco de dados estritamente limitadas às colunas necessárias (evitando `SELECT *`), reduzindo o payload de rede em mais de 90% nas abas de histórico e relatórios.
 * **Exportação Local de Relatórios:** Geração de planilhas financeiras (CSV/Excel) processadas nativamente pelo JavaScript do navegador, sem onerar o servidor.
@@ -35,7 +35,7 @@ Este projeto foi construído pensando em escalabilidade e economia de recursos, 
 
 * **Frontend:** HTML5, CSS3, JavaScript (ES6+ Vanilla)
 * **Backend / Database:** [Supabase](https://supabase.com/) (PostgreSQL & Realtime WebSockets)
-* **Storage de Imagens:** API [ImgBB](https://imgbb.com/)
+* **Storage de Imagens:** API [Cloudinary](https://cloudinary.com/)
 * **Bibliotecas Auxiliares:**
     * `Cropper.js` (Manipulação de imagens)
     * `SortableJS` (Reordenação de categorias por Drag-and-Drop)

@@ -1,6 +1,6 @@
 /* ================================================= */
 /* ARQUIVO: js/admin_modules/products.js             */
-/* Gerenciamento de Produtos, Upload (Supabase Storage) e Galeria */
+/* Gerenciamento de Produtos, Upload (Cloudinary) e Galeria */
 /* ================================================= */
 
 import { supabase } from '../config/supabase-config.js';
@@ -11,6 +11,23 @@ let cropperInstance = null;
 let currentFile = null; 
 window.croppedBlob = null; 
 
+const CLOUDINARY_CONFIG = {
+    cloudName: 'hhoqdvcp',
+    uploadPreset: 'oba_brownie',
+    folder: 'produtos'
+};
+
+const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloudName}/image/upload`;
+
+function criarSlugCloudinary(valor, fallback = 'produto') {
+    return String(valor || fallback)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 80) || fallback;
+}
 window.cancelarCorte = cancelarCorte;
 window.confirmarCorte = confirmarCorte;
 window.abrirGaleria = abrirGaleria;
@@ -96,7 +113,7 @@ export async function testarImagemProduto() {
 
     const carrega = await validateImageUrl(url);
     if (!carrega) {
-        alert('A imagem não carregou. Use um link direto de imagem, de preferência começando com https://i.ibb.co/.');
+        alert('A imagem não carregou. Use um link direto de imagem, de preferência começando com https://res.cloudinary.com/.');
         return;
     }
 
@@ -107,6 +124,39 @@ export async function testarImagemProduto() {
         preview.style.display = 'block';
     }
     alert('Imagem carregou corretamente.');
+}
+
+async function uploadImagemProdutoCloudinary(blob, nomeProduto, categoriaProduto) {
+    const produtoSlug = criarSlugCloudinary(nomeProduto, 'produto');
+    const categoriaSlug = criarSlugCloudinary(categoriaProduto, 'sem-categoria');
+    const dataUpload = new Date().toISOString().replace(/\D/g, '').slice(0, 14);
+    const publicId = `${produtoSlug}-${dataUpload}`;
+
+    const formData = new FormData();
+    formData.append('file', blob, `${publicId}.webp`);
+    formData.append('upload_preset', CLOUDINARY_CONFIG.uploadPreset);
+    const assetFolder = `${CLOUDINARY_CONFIG.folder}/${categoriaSlug}`;
+    formData.append('asset_folder', assetFolder);
+    formData.append('public_id_prefix', assetFolder);
+    formData.append('public_id', publicId);
+
+    const resposta = await fetch(CLOUDINARY_UPLOAD_URL, {
+        method: 'POST',
+        body: formData
+    });
+
+    let dados = null;
+    try {
+        dados = await resposta.json();
+    } catch {
+        throw new Error('O Cloudinary retornou uma resposta inválida. Tente reenviar a foto.');
+    }
+
+    if (!resposta.ok || !dados.secure_url) {
+        throw new Error('Falha ao salvar a imagem no Cloudinary: ' + (dados?.error?.message || 'Erro desconhecido'));
+    }
+
+    return dados.secure_url;
 }
 
 // === LISTAGEM E RENDERIZAÇÃO ===
@@ -274,6 +324,8 @@ export async function salvarProduto(e) {
     try {
         const fotoInput = document.getElementById('p-foto');
         const urlInput = document.getElementById('p-foto-url'); 
+        const nomeProduto = document.getElementById('p-nome').value.trim();
+        const categoriaProduto = document.getElementById('p-categoria').value.trim();
         
         let fotoUrlFinal = window.urlImagemAtual; 
         
@@ -282,34 +334,15 @@ export async function salvarProduto(e) {
 
         if (imagemColadaManual) {
             fotoUrlFinal = urlInput.value.trim();
-        } 
-        // PRIORIDADE 2: Upload para o ImgBB (com compressão WebP!)
+        }
+        // PRIORIDADE 2: Upload para o Cloudinary (com compressão WebP!)
         else if (window.croppedBlob) {
-            btn.innerText = "Enviando para o ImgBB...";
-            
-            // A chave da API do ImgBB do seu projeto
-            const apiKey = '51c759a4e8edeca1edb1d902d8e2c27a'; 
-            
-            // Prepara o "pacote" com a foto recortada
-            const formData = new FormData();
-            formData.append('image', window.croppedBlob, `brownie_${Date.now()}.webp`);
-            
-            // Dispara para os servidores do ImgBB
-            const resposta = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
-                method: 'POST',
-                body: formData
-            });
-            
-            const dados = await resposta.json();
-            
-            if (dados.success) {
-                fotoUrlFinal = dados.data.url; // Pega o link público gerado
-                const imagemCarrega = await validateImageUrl(fotoUrlFinal);
-                if (!imagemCarrega) {
-                    throw new Error("O ImgBB respondeu, mas a imagem gerada não carregou no navegador. Tente reenviar a foto.");
-                }
-            } else {
-                throw new Error("Falha ao salvar a imagem no ImgBB: " + (dados.error?.message || "Erro desconhecido"));
+            btn.innerText = "Enviando para o Cloudinary...";
+
+            fotoUrlFinal = await uploadImagemProdutoCloudinary(window.croppedBlob, nomeProduto, categoriaProduto);
+            const imagemCarrega = await validateImageUrl(fotoUrlFinal);
+            if (!imagemCarrega) {
+                throw new Error("O Cloudinary respondeu, mas a imagem gerada não carregou no navegador. Tente reenviar a foto.");
             }
             
         } 
@@ -325,7 +358,7 @@ export async function salvarProduto(e) {
             if (!imagemCarrega) {
                 btn.disabled = false;
                 btn.innerText = textoOriginal;
-                return alert("A URL da imagem não carregou. Confira se é um link direto de imagem, de preferência começando com https://i.ibb.co/.");
+                return alert("A URL da imagem não carregou. Confira se é um link direto de imagem, de preferência começando com https://res.cloudinary.com/.");
             }
         }
 
@@ -336,10 +369,10 @@ export async function salvarProduto(e) {
         precoAntigo = precoAntigo ? parseFloat(precoAntigo) : null;
 
         const dadosProduto = {
-            nome: document.getElementById('p-nome').value,
+            nome: nomeProduto,
             preco: parseFloat(document.getElementById('p-preco').value),
             preco_original: precoAntigo, 
-            categoria: document.getElementById('p-categoria').value,
+            categoria: categoriaProduto,
             estoque: parseInt(document.getElementById('p-estoque').value),
             ordem: ordemValor,
             descricao: document.getElementById('p-desc').value,
@@ -430,67 +463,177 @@ export function filtrarProdutos(termo) {
 
 
 // =========================================================
-// === GALERIA DE IMAGENS INTERNA (COM EXCLUSÃO FÍSICA) ===
+// === GALERIA DE IMAGENS INTERNA ===
 // =========================================================
 
 export async function abrirGaleria() {
     const grid = document.getElementById('grid-galeria');
     const modal = document.getElementById('modal-galeria');
-    
-    grid.innerHTML = '<p style="grid-column: 1/-1; text-align:center; color:#666;"><i class="fas fa-spinner fa-spin"></i> Carregando suas fotos...</p>';
+    if (!grid || !modal) return;
+
+    configurarEventosGaleria();
+    grid.innerHTML = '<div class="galeria-loading"><i class="fas fa-spinner fa-spin"></i><span>Carregando imagens dos produtos...</span></div>';
     modal.style.display = 'flex';
 
     try {
-        const data = LOCAL_TEST_MODE
-            ? getMockProductsAdmin().map(p => ({ imagem: p.imagem }))
-            : (await supabase.from('produtos').select('imagem').not('imagem', 'is', null)).data;
-        
-        if (!data || data.length === 0) {
-            grid.innerHTML = '<p style="grid-column: 1/-1; text-align:center;">Nenhuma imagem encontrada no sistema.</p>';
-            return;
+        let data = [];
+        if (LOCAL_TEST_MODE) {
+            data = getMockProductsAdmin().map(p => ({ id: p.id, nome: p.nome, categoria: p.categoria, ativo: p.ativo, imagem: p.imagem }));
+        } else {
+            const { data: produtosGaleria, error } = await supabase
+                .from('produtos')
+                .select('id, nome, categoria, ativo, imagem')
+                .not('imagem', 'is', null)
+                .order('categoria', { ascending: true })
+                .order('nome', { ascending: true });
+
+            if (error) throw error;
+            data = produtosGaleria || [];
         }
 
-        const urlsUnicas = [...new Set(data.map(p => sanitizeImageUrl(p.imagem, '')).filter(url => url && url.startsWith('http')))];
-
-        grid.innerHTML = '';
-        urlsUnicas.forEach(url => {
-            const wrapper = document.createElement('div');
-            wrapper.style.cssText = 'position: relative; width: 100%; height: 110px; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border: 3px solid transparent; transition: all 0.2s;';
-            wrapper.onmouseover = () => { wrapper.style.borderColor = 'var(--primary)'; wrapper.style.transform = 'scale(1.05)'; };
-            wrapper.onmouseout = () => { wrapper.style.borderColor = 'transparent'; wrapper.style.transform = 'scale(1)'; };
-
-            const img = document.createElement('img');
-            img.src = url;
-            img.dataset.fallbackSrc = DEFAULT_IMAGE_FALLBACK;
-            img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; cursor: pointer;';
-            img.onclick = () => selecionarImagemGaleria(url);
-
-            const btnDel = document.createElement('button');
-            btnDel.innerHTML = '<i class="fas fa-trash"></i>';
-            btnDel.title = "Apagar Imagem";
-            btnDel.style.cssText = 'position: absolute; top: 5px; right: 5px; background: rgba(220, 53, 69, 0.9); color: white; border: none; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.8em; box-shadow: 0 2px 4px rgba(0,0,0,0.3);';
-            
-            btnDel.onclick = (e) => {
-                e.stopPropagation(); 
-                deletarImagemGaleria(url);
-            };
-
-            wrapper.appendChild(img);
-            wrapper.appendChild(btnDel);
-            attachImageFallbacks(wrapper);
-            grid.appendChild(wrapper);
-        });
-        
-        if(urlsUnicas.length === 0) {
-            grid.innerHTML = '<p style="grid-column: 1/-1; text-align:center;">Nenhuma imagem válida encontrada.</p>';
-        }
-
+        window.galeriaImagensCache = prepararItensGaleria(data);
+        atualizarCategoriasGaleria(window.galeriaImagensCache);
+        atualizarResumoGaleria(window.galeriaImagensCache);
+        renderizarGaleriaProdutos();
     } catch (e) {
-        grid.innerHTML = '<p style="grid-column: 1/-1; text-align:center; color:red;">Erro ao carregar a galeria.</p>';
+        grid.innerHTML = '<div class="galeria-empty"><i class="fas fa-triangle-exclamation"></i><strong>Erro ao carregar a galeria.</strong><span>Tente atualizar o painel em alguns instantes.</span></div>';
         console.error(e);
     }
 }
 
+function prepararItensGaleria(produtos) {
+    return produtos
+        .map(produto => {
+            const url = sanitizeImageUrl(produto.imagem, '');
+            if (!url || !url.startsWith('http')) return null;
+
+            return {
+                id: produto.id,
+                nome: produto.nome || 'Produto sem nome',
+                categoria: produto.categoria || 'Sem categoria',
+                ativo: produto.ativo === true,
+                url,
+                origem: getOrigemImagem(url)
+            };
+        })
+        .filter(Boolean);
+}
+
+function getOrigemImagem(url) {
+    if (url.includes('res.cloudinary.com')) return 'cloudinary';
+    if (url.includes('i.ibb.co')) return 'legado';
+    return 'externa';
+}
+
+function configurarEventosGaleria() {
+    const busca = document.getElementById('galeria-busca');
+    const status = document.getElementById('galeria-status');
+    const categoria = document.getElementById('galeria-categoria');
+
+    [busca, status, categoria].forEach(controle => {
+        if (!controle || controle.dataset.bound === 'true') return;
+        controle.addEventListener('input', renderizarGaleriaProdutos);
+        controle.addEventListener('change', renderizarGaleriaProdutos);
+        controle.dataset.bound = 'true';
+    });
+}
+
+function atualizarCategoriasGaleria(itens) {
+    const select = document.getElementById('galeria-categoria');
+    if (!select) return;
+
+    const valorAtual = select.value || 'todas';
+    const categorias = [...new Set(itens.map(item => item.categoria).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+
+    select.innerHTML = '<option value="todas">Todas as categorias</option>';
+    categorias.forEach(categoria => {
+        const opt = document.createElement('option');
+        opt.value = categoria;
+        opt.textContent = categoria;
+        select.appendChild(opt);
+    });
+
+    select.value = categorias.includes(valorAtual) ? valorAtual : 'todas';
+}
+
+function atualizarResumoGaleria(itens) {
+    const total = document.getElementById('galeria-total');
+    const totalCloudinary = document.getElementById('galeria-cloudinary-total');
+
+    if (total) total.textContent = itens.length;
+    if (totalCloudinary) totalCloudinary.textContent = itens.filter(item => item.origem === 'cloudinary').length;
+}
+
+function renderizarGaleriaProdutos() {
+    const grid = document.getElementById('grid-galeria');
+    if (!grid) return;
+
+    const itens = window.galeriaImagensCache || [];
+    const termo = (document.getElementById('galeria-busca')?.value || '').toLowerCase().trim();
+    const status = document.getElementById('galeria-status')?.value || 'todos';
+    const categoria = document.getElementById('galeria-categoria')?.value || 'todas';
+
+    const filtrados = itens.filter(item => {
+        const combinaBusca = !termo || `${item.nome} ${item.categoria}`.toLowerCase().includes(termo);
+        const combinaStatus = status === 'todos' || (status === 'ativo' && item.ativo) || (status === 'desativado' && !item.ativo);
+        const combinaCategoria = categoria === 'todas' || item.categoria === categoria;
+        return combinaBusca && combinaStatus && combinaCategoria;
+    });
+
+    grid.innerHTML = '';
+
+    if (itens.length === 0) {
+        grid.innerHTML = '<div class="galeria-empty"><i class="fas fa-image"></i><strong>Nenhuma imagem encontrada.</strong><span>Cadastre uma imagem em algum produto para ela aparecer aqui.</span></div>';
+        return;
+    }
+
+    if (filtrados.length === 0) {
+        grid.innerHTML = '<div class="galeria-empty"><i class="fas fa-filter"></i><strong>Nenhum resultado para esse filtro.</strong><span>Ajuste a busca, categoria ou status.</span></div>';
+        return;
+    }
+
+    filtrados.forEach(item => {
+        const card = document.createElement('article');
+        card.className = `galeria-card ${item.ativo ? 'is-active' : 'is-inactive'}`;
+        card.tabIndex = 0;
+
+        const origemLabel = item.origem === 'cloudinary' ? 'Cloudinary' : item.origem === 'legado' ? 'Link antigo' : 'Link externo';
+        const statusLabel = item.ativo ? 'Ativo' : 'Desativado';
+        const productName = escapeHTML(item.nome);
+        const productCategory = escapeHTML(item.categoria);
+        const productImage = escapeAttribute(item.url);
+
+        card.innerHTML = `
+            <div class="galeria-card-image">
+                <img src="${productImage}" alt="${productName}" loading="lazy" decoding="async" data-fallback-src="${DEFAULT_IMAGE_FALLBACK}">
+                <span class="galeria-origin ${item.origem}"><i class="fas fa-cloud"></i> ${origemLabel}</span>
+                <button type="button" class="galeria-delete" title="Remover esta imagem dos produtos">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+            <div class="galeria-card-body">
+                <strong>${productName}</strong>
+                <span>${productCategory}</span>
+                <div class="galeria-card-footer">
+                    <span class="galeria-status ${item.ativo ? 'ativo' : 'desativado'}">${statusLabel}</span>
+                    <button type="button" class="galeria-select">Selecionar</button>
+                </div>
+            </div>`;
+
+        card.querySelector('.galeria-select').addEventListener('click', () => selecionarImagemGaleria(item.url));
+        card.querySelector('.galeria-delete').addEventListener('click', (e) => {
+            e.stopPropagation();
+            deletarImagemGaleria(item.url);
+        });
+        card.addEventListener('dblclick', () => selecionarImagemGaleria(item.url));
+        card.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') selecionarImagemGaleria(item.url);
+        });
+
+        attachImageFallbacks(card);
+        grid.appendChild(card);
+    });
+}
 export function fecharGaleria() {
     const modal = document.getElementById('modal-galeria');
     if (modal) modal.style.display = 'none';
@@ -516,25 +659,16 @@ export async function deletarImagemGaleria(url) {
         return;
     }
 
-    if(confirm('🚨 Tem certeza que deseja apagar esta imagem?\n\nEla será removida da galeria, de todos os produtos, e o arquivo físico será apagado do servidor permanentemente.')) {
+    if(confirm('🚨 Tem certeza que deseja remover esta imagem dos produtos?\n\nEla será removida da galeria e de todos os produtos que usam este link.')) {
         try {
             // 1. Tira a foto de todos os produtos que usam esse link no Banco de Dados
             const { error: dbError } = await supabase.from('produtos').update({ imagem: null }).eq('imagem', url);
             if (dbError) throw dbError;
-            
-            // 2. NOVO: Se a imagem estiver no nosso Supabase Storage, apaga o arquivo físico!
-            if (url.includes('supabase.co/storage/v1/object/public/produtos/')) {
-                // Pega apenas o nome do arquivo final (ex: brownie_1711982736.webp)
-                const nomeArquivo = url.split('/').pop(); 
-                
-                const { error: storageError } = await supabase.storage.from('produtos').remove([nomeArquivo]);
-                if (storageError) console.error("Erro ao apagar arquivo físico:", storageError);
-            }
-            
+
             abrirGaleria();
             carregarProdutos();
             
-            alert('Imagem apagada com sucesso e espaço libertado no servidor!');
+            alert('Imagem removida dos produtos com sucesso!');
         } catch (e) {
             alert('Erro ao apagar imagem: ' + e.message);
         }

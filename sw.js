@@ -1,15 +1,16 @@
-const CACHE_NAME = 'oba-brownie-imagens-v3';
+const CACHE_NAME = 'oba-brownie-imagens-v4';
 
 function isCacheableImageRequest(event, url) {
     if (event.request.method !== 'GET') return false;
 
     const isImageRequest = event.request.destination === 'image';
     const isImgBBImage = url.hostname === 'i.ibb.co' && isImageRequest;
+    const isCloudinaryImage = url.hostname === 'res.cloudinary.com' && isImageRequest;
     const isSupabaseStorageImage = url.hostname.endsWith('.supabase.co')
         && url.pathname.includes('/storage/v1/object/')
         && isImageRequest;
 
-    return isImgBBImage || isSupabaseStorageImage;
+    return isImgBBImage || isCloudinaryImage || isSupabaseStorageImage;
 }
 
 self.addEventListener('install', (event) => {
