@@ -31,9 +31,19 @@ export function setTaxaEntregaUI(valor) {
 export function getCurrentCartValues() {
     const paySelect = document.getElementById('payment-method');
     const metodoPagamento = paySelect ? paySelect.value : '';
-    const cupomPerc = window.cupomAplicado ? window.cupomAplicado.desconto_percentual : 0;
+    const subtotalValues = calculateTotals(taxaEntregaAtual, 0, metodoPagamento);
+    const coupon = window.cupomAplicado;
+    if (!coupon) return subtotalValues;
 
-    return calculateTotals(taxaEntregaAtual, cupomPerc, metodoPagamento);
+    const cart = getCart();
+    const eligibleSubtotal = coupon.target_tipo === 'frete'
+        ? subtotalValues.frete
+        : coupon.target_tipo === 'categoria'
+            ? cart.filter(item => (item.categoria || window.obaCategoriasPorProduto?.[String(item.id)]) === coupon.target_categoria)
+                .reduce((sum, item) => sum + (item.price * item.quantity), 0)
+            : subtotalValues.subtotal;
+    const discount = eligibleSubtotal * (safeNumber(coupon.desconto_percentual) / 100);
+    return calculateTotals(taxaEntregaAtual, discount, metodoPagamento);
 }
 
 // === EXPOSIÇÃO GLOBAL (Para o HTML) ===

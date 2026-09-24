@@ -56,8 +56,10 @@ function generatePriceHTML(product) {
     const precoOriginal = safeNumber(product.preco_original || product.originalPrice);
     
     if (precoOriginal && precoOriginal > price) {
+        const desconto = Math.round((1 - (price / precoOriginal)) * 100);
         return `
             <div class="product-price-container">
+                <span class="product-promo-badge">-${desconto}%</span>
                 <span class="original-price">R$ ${formatCurrencyBR(precoOriginal)}</span>
                 <span class="promo-price">R$ ${formatCurrencyBR(price)}</span>
             </div>`;
@@ -71,6 +73,10 @@ export function renderProducts(products, lojaAberta, customOrder = []) {
     const destaquesContainer = document.getElementById('destaques-section');
     
     if (!productListContainer || !destaquesContainer) return;
+
+    window.obaCategoriasPorProduto = Object.fromEntries(
+        products.map(product => [String(product.id), product.categoria || 'Outros'])
+    );
 
     productListContainer.innerHTML = '';
     destaquesContainer.innerHTML = '';

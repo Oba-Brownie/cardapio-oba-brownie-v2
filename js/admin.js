@@ -66,6 +66,8 @@ window.salvarOrdemCategorias = Settings.salvarOrdemCategorias;
 window.carregarCupons = Coupons.carregarCupons;
 window.salvarCupom = Coupons.salvarCupom;
 window.deletarCupom = Coupons.deletarCupom;
+window.salvarPromocao = Coupons.salvarPromocao;
+window.removerPromocao = Coupons.removerPromocao;
 
 window.gerarRelatorio = Reports.gerarRelatorio;
 

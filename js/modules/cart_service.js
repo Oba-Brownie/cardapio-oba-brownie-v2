@@ -45,7 +45,7 @@ export function addToCartLogic(product) {
     } else {
         cart.push({
             id: idProduto, name: product.name, price: parseFloat(product.price),
-            image: product.image, estoque: product.estoque, quantity: 1
+            image: product.image, estoque: product.estoque, categoria: product.categoria || 'Outros', quantity: 1
         });
     }
     saveCartMemory();
@@ -76,12 +76,11 @@ export function removeFromCartLogic(id) {
 }
 
 // === CÁLCULOS MATEMÁTICOS ===
-export function calculateTotals(taxaEntrega = 0, descontoPercentual = 0, metodoPagamento = '') {
+export function calculateTotals(taxaEntrega = 0, desconto = 0, metodoPagamento = '') {
     const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-    const desconto = subtotal * (descontoPercentual / 100);
     
     let taxaCartao = 0;
-    const baseCalculo = subtotal - desconto + taxaEntrega;
+    const baseCalculo = Math.max(0, subtotal - desconto + taxaEntrega);
     const pag = metodoPagamento.toLowerCase();
     
     if (pag.includes('crédito') || pag.includes('credito')) {

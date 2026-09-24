@@ -6,7 +6,7 @@
     <title>Oba Gestão - Painel</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
-    <link rel="stylesheet" href="css/admin.css?v=galeria-cloudinary-1">
+    <link rel="stylesheet" href="css/admin.css?v=cupons-promocoes-1">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
 </head>
@@ -287,11 +287,63 @@
                                 <input type="number" id="c-qtd" required placeholder="50" min="1">
                             </div>
                         </div>
+                        <fieldset class="coupon-scope-fieldset">
+                            <legend>Onde aplicar o desconto</legend>
+                            <div class="coupon-scope-options">
+                                <label><input type="radio" name="c-escopo" value="loja" checked> Toda a loja</label>
+                                <label><input type="radio" name="c-escopo" value="categoria"> Uma seção</label>
+                                <label><input type="radio" name="c-escopo" value="frete"> Taxa de entrega</label>
+                            </div>
+                            <div id="c-categoria-wrap" class="coupon-category-wrap" hidden>
+                                <label for="c-categoria">Seção do cardápio</label>
+                                <select id="c-categoria" disabled>
+                                    <option value="">Carregando seções...</option>
+                                </select>
+                            </div>
+                        </fieldset>
                         <button type="submit" class="btn-save" style="margin-top: 10px;">CRIAR CUPOM</button>
                     </form>
                 </div>
 
                 <div id="lista-cupons">Carregando...</div>
+
+                <div class="promotion-manager">
+                    <div class="promotion-heading">
+                        <div>
+                            <span class="promotion-eyebrow">Vitrine</span>
+                            <h2>Promoções</h2>
+                            <p>Escolha os produtos ativos que receberão o desconto. O preço anterior ficará riscado no cardápio.</p>
+                        </div>
+                    </div>
+                    <div class="form-card promotion-form-card">
+                        <form onsubmit="salvarPromocao(event)">
+                            <div class="promotion-form-grid">
+                                <div>
+                                    <label for="promo-percentual">Desconto da promoção (%)</label>
+                                    <input type="number" id="promo-percentual" min="1" max="99" step="1" placeholder="Ex.: 20" required>
+                                </div>
+                                <div>
+                                    <label for="promo-tipo">Aplicar em</label>
+                                    <select id="promo-tipo" required>
+                                        <option value="loja">Toda a loja</option>
+                                        <option value="categoria">Uma seção</option>
+                                        <option value="produto">Um produto</option>
+                                    </select>
+                                </div>
+                                <div id="promo-categoria-wrap" hidden>
+                                    <label for="promo-categoria">Seção</label>
+                                    <select id="promo-categoria" disabled><option value="">Carregando seções...</option></select>
+                                </div>
+                                <div id="promo-produto-wrap" hidden>
+                                    <label for="promo-produto">Produto ativo</label>
+                                    <select id="promo-produto" disabled><option value="">Carregando produtos...</option></select>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn-save">APLICAR PROMOÇÃO</button>
+                        </form>
+                    </div>
+                    <div id="lista-produtos-promocao" class="promotion-active-list">Carregando promoções...</div>
+                </div>
             </section>
             
             <section id="config" class="section">

@@ -47,7 +47,11 @@ export async function aplicarCupom() {
             throw new Error(`Mínimo de R$ ${data.valor_minimo.toFixed(2).replace('.', ',')} em produtos.`);
         }
 
-        window.cupomAplicado = data;
+        window.cupomAplicado = {
+            ...data,
+            target_tipo: data.target_tipo || 'loja',
+            target_categoria: data.target_categoria || null
+        };
         msg.textContent = `✅ Uhuu! Cupom de ${data.desconto_percentual}% aplicado!`;
         msg.style.color = "#28a745"; 
         
@@ -92,22 +96,21 @@ export function removerCupom() {
 
 export function atualizarResumoDesconto() {
     if (!window.cupomAplicado) return;
-    
+
+    const coupon = window.cupomAplicado;
     const values = getCurrentCartValues();
-    
-    if (values.subtotal === 0 || (window.cupomAplicado.valor_minimo > 0 && values.subtotal < window.cupomAplicado.valor_minimo)) {
+    if (values.subtotal === 0 || (coupon.valor_minimo > 0 && values.subtotal < coupon.valor_minimo)) {
         removerCupom();
         if (values.subtotal > 0) {
             const msg = document.getElementById('cupom-msg');
-            msg.textContent = `❌ Cupom removido: Mínimo de R$ ${window.cupomAplicado.valor_minimo.toFixed(2).replace('.', ',')}`;
+            msg.textContent = `❌ Cupom removido: mínimo de R$ ${coupon.valor_minimo.toFixed(2).replace('.', ',')} em produtos.`;
             msg.style.color = "red";
         }
         return;
     }
 
-    const valorDesconto = values.subtotal * (window.cupomAplicado.desconto_percentual / 100);
-    const taxaCartao = values.taxaCartao || 0; 
-    const totalFinal = (values.subtotal - valorDesconto) + values.frete + taxaCartao;
+    const valorDesconto = values.desconto || 0;
+    const totalFinal = (values.subtotal - valorDesconto) + values.frete + (values.taxaCartao || 0);
 
     const discountLine = document.getElementById('discount-line');
     const discountValue = document.getElementById('discount-cart-value');
@@ -117,7 +120,7 @@ export function atualizarResumoDesconto() {
     if (discountLine && discountValue) {
         discountLine.style.display = 'flex';
         discountValue.textContent = `- R$ ${valorDesconto.toFixed(2).replace('.', ',')}`;
-        if(discountName) discountName.textContent = window.cupomAplicado.codigo; 
+        if(discountName) discountName.textContent = coupon.codigo;
     }
     
     if (cartTotal) {
