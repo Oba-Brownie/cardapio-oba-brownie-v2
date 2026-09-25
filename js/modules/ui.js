@@ -1,4 +1,5 @@
 import { attachImageFallbacks, DEFAULT_IMAGE_FALLBACK, escapeHTML, escapeAttribute, formatCurrencyBR, inlineJSString, sanitizeImageUrl, safeNumber } from './utils.js';
+import { syncCartProducts } from './cart_service.js';
 
 let notificacaoTimeout;
 
@@ -52,6 +53,21 @@ function generatePriceHTML(product) {
     if (price === 0) {
         return `<p class="product-price" style="color: #28a745; font-weight: bold;">Grátis</p>`;
     }
+
+    if (product.promotion) {
+        const desconto = safeNumber(product.promotion.desconto_percentual);
+        const promoPrice = Math.round(price * (1 - desconto / 100) * 100) / 100;
+        const minimum = safeNumber(product.promotion.valor_minimo);
+        const condition = minimum > 0
+            ? `<span class="promotion-condition">Em pedidos a partir de R$ ${formatCurrencyBR(minimum)}</span>` : '';
+        return `
+            <div class="product-price-container">
+                <span class="product-promo-badge">-${desconto}%</span>
+                <span class="original-price">R$ ${formatCurrencyBR(price)}</span>
+                <span class="promo-price">R$ ${formatCurrencyBR(promoPrice)}</span>
+                ${condition}
+            </div>`;
+    }
     
     const precoOriginal = safeNumber(product.preco_original || product.originalPrice);
     
@@ -77,6 +93,7 @@ export function renderProducts(products, lojaAberta, customOrder = []) {
     window.obaCategoriasPorProduto = Object.fromEntries(
         products.map(product => [String(product.id), product.categoria || 'Outros'])
     );
+    syncCartProducts(products);
 
     productListContainer.innerHTML = '';
     destaquesContainer.innerHTML = '';

@@ -8,7 +8,7 @@ import { fetchConfiguracaoLoja, fetchProducts } from './modules/api.js';
 import { renderProducts, initBlackFridayPopup, hideSplashScreen } from './modules/ui.js';
 import { copyToClipboard } from './modules/utils.js';
 
-import { initCartUI, handleAddToCart } from './modules/cart_ui.js';
+import { initCartUI, refreshCartUI, handleAddToCart } from './modules/cart_ui.js';
 import { setupCheckout } from './modules/checkout.js';
 import { isSchedulingOrder, clearSchedulingOrder, setSchedulingOrder, setupSchedulingUI } from './modules/scheduling.js';
 
@@ -59,6 +59,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         todosProdutos = await fetchProducts({ forceRefresh: true });
         renderProducts(todosProdutos, canShop, config.categoriasOrdem);
+        refreshCartUI();
     } catch (error) {
         console.error("Erro ao carregar produtos:", error);
         document.getElementById('product-list').innerHTML = '<p style="text-align: center; color: red;">Erro ao carregar cardápio.</p>';
@@ -184,6 +185,7 @@ document.addEventListener('visibilitychange', async () => {
                 
                 todosProdutos = await fetchProducts({ forceRefresh: true });
                 renderProducts(todosProdutos, canShop, config.categoriasOrdem);
+                refreshCartUI();
                 
                 if (typeof handleStoreStatusUI === 'function') {
                     handleStoreStatusUI(lojaAberta, !config.lojaAbertaManual, isScheduling, config);

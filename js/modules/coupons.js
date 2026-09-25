@@ -35,8 +35,8 @@ export async function aplicarCupom() {
             data = findMockCupom(codigo);
             error = data ? null : new Error('Cupom inválido ou expirado.');
         } else {
-            const response = await supabase.from('cupons').select('*').eq('codigo', codigo).single();
-            data = response.data;
+            const response = await supabase.rpc('consultar_cupom', { p_codigo: codigo });
+            data = Array.isArray(response.data) ? response.data[0] : response.data;
             error = response.error;
         }
 
@@ -85,7 +85,7 @@ export function removerCupom() {
     if (discountLine) discountLine.style.display = 'none'; 
     
     const values = getCurrentCartValues();
-    const totalNormal = values.subtotal + values.frete + (values.taxaCartao || 0);
+    const totalNormal = values.subtotal - (values.promotionDiscount || 0) + values.frete + (values.taxaCartao || 0);
     const cartTotal = document.getElementById('cart-total');
     if(cartTotal) cartTotal.textContent = `R$ ${totalNormal.toFixed(2).replace('.', ',')}`;
     
@@ -109,8 +109,8 @@ export function atualizarResumoDesconto() {
         return;
     }
 
-    const valorDesconto = values.desconto || 0;
-    const totalFinal = (values.subtotal - valorDesconto) + values.frete + (values.taxaCartao || 0);
+    const valorDesconto = values.couponDiscount || 0;
+    const totalFinal = values.subtotal - (values.desconto || 0) + values.frete + (values.taxaCartao || 0);
 
     const discountLine = document.getElementById('discount-line');
     const discountValue = document.getElementById('discount-cart-value');

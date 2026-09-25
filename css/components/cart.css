@@ -34,6 +34,10 @@
 .item-info { flex: 1; text-align: left; }
 .item-name { display: block; color: var(--color-text); font-weight: 800; line-height: 1.25; }
 .item-price { font-size: 0.9em; color: var(--color-muted); }
+.cart-promo-price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; font-size: 0.9em; }
+.cart-promo-price s { color: var(--color-muted); }
+.cart-promo-price strong { color: var(--color-primary-strong); }
+.cart-promo-condition { display: block; max-width: 38ch; margin-top: 3px; color: var(--color-muted); line-height: 1.35; }
 .item-controls { display: flex; align-items: center; gap: 8px; }
 .quantity-label { font-size: 0.9em; }
 .quantity-input { width: 54px; min-height: 38px; text-align: center; padding: 5px; border-radius: var(--radius-sm); border: 1px solid var(--color-border-strong); }

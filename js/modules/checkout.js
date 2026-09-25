@@ -1,7 +1,7 @@
 import { supabase } from '../config/supabase-config.js';
 import { LISTA_BAIRROS } from '../config/constants.js';
 import { getCart, clearCart } from './cart_service.js';
-import { getCurrentCartValues, setTaxaEntregaUI } from './cart_ui.js'; // <-- A calculadora certa está aqui!
+import { getCurrentCartValues, getCartLinePricing, setTaxaEntregaUI } from './cart_ui.js';
 import { LOCAL_TEST_MODE } from './local_test_mode.js';
 import { copyToClipboard, escapeHTML, formatCurrencyBR, safeNumber } from './utils.js';
 
@@ -201,12 +201,8 @@ async function handleCheckout() {
     btn.textContent = 'Registrando Pedido...';
 
     // === CÁLCULOS ===
-    let subtotalComDesconto = cartValues.subtotal;
     let valorDesconto = cartValues.desconto || 0;
-
-    if (window.cupomAplicado) {
-        subtotalComDesconto = cartValues.subtotal - valorDesconto;
-    }
+    const subtotalComDesconto = cartValues.subtotal - valorDesconto;
 
     const taxaCartao = cartValues.taxaCartao || 0;
     const totalFinal = subtotalComDesconto + cartValues.frete + taxaCartao;
@@ -215,7 +211,9 @@ async function handleCheckout() {
 
     // === TENTA SALVAR NO BANCO (MODO INDESTRUTÍVEL) ===
     try {
-        const itensOtimizados = cart.map(item => ({ id: item.id, name: item.name, price: item.price, quantity: item.quantity }));
+        const itensOtimizados = getCartLinePricing().map(({ item, unitPrice }) => ({
+            id: item.id, name: item.name, price: unitPrice, quantity: item.quantity
+        }));
 
         const pedido = {
             cliente_nome: name,
@@ -312,13 +310,15 @@ async function handleCheckout() {
     if (obs) message += `\n*OBSERVAÇÃO:* *${obs.trim()}*\n`;
 
     message += `\n--- *ITENS DO PEDIDO* ---\n`;
-    cart.forEach(item => {
-        message += `*${item.quantity}x ${item.name}* - *R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')}*\n`;
+    getCartLinePricing().forEach(({ item, unitPrice, promotionApplied }) => {
+        const promotionalNote = promotionApplied ? ' (promoção)' : '';
+        message += `*${item.quantity}x ${item.name}*${promotionalNote} - *R$ ${(unitPrice * item.quantity).toFixed(2).replace('.', ',')}*\n`;
     });
 
     message += `\n*Subtotal:* *R$ ${cartValues.subtotal.toFixed(2).replace('.', ',')}*`;
     if (deliveryType === 'delivery') message += `\n*VALOR DA ENTREGA:* *R$ ${cartValues.frete.toFixed(2).replace('.', ',')}*\n`;
-    if (window.cupomAplicado) message += `\n*🎟️ Cupom (${window.cupomAplicado.codigo}):* *-R$ ${valorDesconto.toFixed(2).replace('.', ',')}*`;
+    if (cartValues.promotionDiscount > 0) message += `\n*Promoções:* *-R$ ${cartValues.promotionDiscount.toFixed(2).replace('.', ',')}*`;
+    if (window.cupomAplicado) message += `\n*🎟️ Cupom (${window.cupomAplicado.codigo}):* *-R$ ${(cartValues.couponDiscount || 0).toFixed(2).replace('.', ',')}*`;
     if (taxaCartao > 0) message += `\n*Taxa Maquininha:* *R$ ${taxaCartao.toFixed(2).replace('.', ',')}*`;
     message += `\n\n*Total:* *R$ ${totalFinal.toFixed(2).replace('.', ',')}*`;
     message += `\n\n*${TRIANGULOS}*`;

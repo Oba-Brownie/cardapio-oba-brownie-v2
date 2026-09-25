@@ -114,6 +114,7 @@
   margin: 0;
   font-variant-numeric: tabular-nums; }
 .product-price-container .promo-price { display: block; margin-top: 2px; }
+.promotion-condition { display: block; margin-top: 5px; color: var(--color-muted); font-size: 0.76rem; font-weight: 600; }
 
 .product-image-container {
   position: relative;

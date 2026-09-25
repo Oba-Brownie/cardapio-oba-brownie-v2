@@ -71,6 +71,20 @@ function isProductsCacheFresh() {
     return diffMinutes < PRODUCTS_CACHE_TTL_MINUTES;
 }
 
+function findPromotionForProduct(product, promotions) {
+    const matching = promotions.filter(promotion => {
+        if (promotion.target_tipo === 'loja') return true;
+        if (promotion.target_tipo === 'categoria') return promotion.target_valor === product.categoria;
+        if (promotion.target_tipo === 'produto') return String(promotion.target_valor) === String(product.id);
+        return false;
+    });
+
+    const priority = { produto: 3, categoria: 2, loja: 1 };
+    matching.sort((a, b) => (priority[b.target_tipo] || 0) - (priority[a.target_tipo] || 0)
+        || new Date(b.criado_em || 0) - new Date(a.criado_em || 0));
+    return matching[0] || null;
+}
+
 // === BUSCA DE PRODUTOS (COM CACHE DE FALLBACK) ===
 export async function fetchProducts(options = {}) {
     if (LOCAL_TEST_MODE) {
@@ -93,18 +107,40 @@ export async function fetchProducts(options = {}) {
 
         if (error) throw error;
 
-        const produtosFormatados = data.map(item => ({
-            id: item.id,
-            name: item.nome,
-            description: item.descricao || '',
-            price: item.preco,
-            originalPrice: item.preco_original || null, 
-            image: item.imagem || 'https://placehold.co/400x400?text=Sem+Foto',
-            categoria: item.categoria || 'Outros',
-            estoque: item.estoque,
-            destaque: item.destaque || false,
-            ordem: item.ordem || 999
-        }));
+        let promotions = [];
+        const { data: activePromotions, error: promotionError } = await supabase
+            .from('promocoes')
+            .select('id, target_tipo, target_valor, desconto_percentual, valor_minimo, criado_em')
+            .eq('ativo', true)
+            .order('criado_em', { ascending: false });
+        if (promotionError) {
+            console.warn('Não foi possível carregar promoções; o cardápio seguirá sem elas.', promotionError);
+        } else {
+            promotions = activePromotions || [];
+        }
+
+        const produtosFormatados = data.map(item => {
+            const category = item.categoria || 'Outros';
+            const promotion = findPromotionForProduct({ id: item.id, categoria: category }, promotions);
+            const price = Number(item.preco_original) > Number(item.preco) ? Number(item.preco_original) : Number(item.preco);
+            return {
+                id: item.id,
+                name: item.nome,
+                description: item.descricao || '',
+                price,
+                originalPrice: promotion ? null : (item.preco_original || null),
+                promotion: promotion ? {
+                    id: promotion.id,
+                    desconto_percentual: Number(promotion.desconto_percentual),
+                    valor_minimo: Number(promotion.valor_minimo) || 0
+                } : null,
+                image: item.imagem || 'https://placehold.co/400x400?text=Sem+Foto',
+                categoria: category,
+                estoque: item.estoque,
+                destaque: item.destaque || false,
+                ordem: item.ordem || 999
+            };
+        });
 
         // 3. Salva no cache para não gastar banda nas próximas atualizações de página
         sessionStorage.setItem('oba_produtos_cache', JSON.stringify(produtosFormatados));

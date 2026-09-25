@@ -16,8 +16,14 @@ export async function verificarSessao() {
     }
 
     const { data: { session } } = await supabase.auth.getSession();
-    
-    if (session) liberarPainel();
+
+    if (!session) {
+        bloquearPainel();
+        return;
+    }
+
+    const { data: isAdmin, error } = await supabase.rpc('is_admin');
+    if (!error && isAdmin === true) liberarPainel();
     else bloquearPainel();
 }
 
@@ -47,6 +53,16 @@ export async function login() {
         btn.innerText = "ENTRAR";
         btn.disabled = false;
     } else {
+        const { data: isAdmin, error: permissionError } = await supabase.rpc('is_admin');
+        if (permissionError || isAdmin !== true) {
+            await supabase.auth.signOut();
+            bloquearPainel();
+            msg.innerText = 'Esta conta não tem permissão para acessar o painel.';
+            btn.innerText = "ENTRAR";
+            btn.disabled = false;
+            return;
+        }
+
         msg.innerText = "";
         liberarPainel();
     }

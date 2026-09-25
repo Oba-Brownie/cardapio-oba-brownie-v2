@@ -7,6 +7,7 @@ import { escapeHTML, formatCurrencyBR, inlineJSString, safeNumber } from '../mod
 import { LOCAL_TEST_MODE, getMockCupons, getMockProductsAdmin, showLocalMutationBlocked } from '../modules/local_test_mode.js';
 
 let produtosPromocaoCache = [];
+let promocoesAtivasCache = [];
 
 function getSelectedValue(name, fallback) {
     return document.querySelector(`input[name="${name}"]:checked`)?.value || fallback;
@@ -87,29 +88,46 @@ function atualizarCamposDePromocao() {
     }
 }
 
-function renderPromocoesAtivas() {
+function renderPromocoesAtivas(promotions, loadError = null) {
     const container = document.getElementById('lista-produtos-promocao');
     if (!container) return;
-    const products = produtosPromocaoCache.filter(product => safeNumber(product.preco_original) > safeNumber(product.preco));
-    if (!products.length) {
-        container.innerHTML = '<p class="promotion-empty">Ainda não há produtos com promoção ativa.</p>';
-        return;
-    }
+    const campaignRows = (promotions || []).map(promotion => {
+        const targetType = promotion.target_tipo;
+        const targetName = targetType === 'loja' ? 'Toda a loja'
+            : targetType === 'categoria' ? `Seção: ${escapeHTML(promotion.target_valor)}`
+                : `Produto: ${escapeHTML(produtosPromocaoCache.find(product => String(product.id) === String(promotion.target_valor))?.nome || 'Produto indisponível')}`;
+        const minimum = safeNumber(promotion.valor_minimo) > 0
+            ? `Pedido mínimo de R$ ${formatCurrencyBR(promotion.valor_minimo)}` : 'Sem pedido mínimo';
+        const id = inlineJSString(promotion.id);
+        return `<article class="promotion-active-item">
+            <div><strong>${targetName}</strong><span>${minimum}</span></div>
+            <div class="promotion-active-prices"><strong>${safeNumber(promotion.desconto_percentual)}% OFF</strong></div>
+            <button type="button" class="promotion-remove-button" onclick="deletarPromocao(${id})">Remover promoção</button>
+        </article>`;
+    }).join('');
 
-    container.innerHTML = products.map(product => {
+    const legacyProducts = produtosPromocaoCache.filter(product => safeNumber(product.preco_original) > safeNumber(product.preco));
+    const legacyRows = legacyProducts.map(product => {
         const id = inlineJSString(product.id);
         return `<article class="promotion-active-item">
             <div>
-                <strong>${escapeHTML(product.nome)}</strong>
-                <span>${escapeHTML(product.categoria || 'Sem seção')} · ${Math.round(((product.preco_original - product.preco) / product.preco_original) * 100)}% de desconto</span>
+                <strong>${escapeHTML(product.nome)} <small>(preço promocional do produto)</small></strong>
+                <span>${escapeHTML(product.categoria || 'Sem seção')}</span>
             </div>
             <div class="promotion-active-prices">
+                <strong>${Math.round(((product.preco_original - product.preco) / product.preco_original) * 100)}% OFF</strong>
                 <s>R$ ${formatCurrencyBR(product.preco_original)}</s>
                 <strong>R$ ${formatCurrencyBR(product.preco)}</strong>
             </div>
-            <button type="button" class="promotion-remove-button" onclick="removerPromocao(${id})">Remover promoção</button>
+            <button type="button" class="promotion-remove-button" onclick="removerPromocaoProduto(${id})">Restaurar preço</button>
         </article>`;
     }).join('');
+    const parts = [];
+    if (loadError) parts.push('<p class="coupon-error">Não foi possível carregar campanhas. Aplique a migration descrita em MIGRACAO_CUPONS.md.</p>');
+    if (campaignRows) parts.push(`<h3 class="promotion-list-title">Campanhas ativas</h3>${campaignRows}`);
+    else if (!loadError) parts.push('<p class="promotion-empty">Ainda não há campanhas ativas.</p>');
+    if (legacyRows) parts.push(`<h3 class="promotion-list-title">Preços promocionais cadastrados nos produtos</h3>${legacyRows}`);
+    container.innerHTML = parts.join('');
 }
 
 export async function carregarCupons() {
@@ -128,6 +146,17 @@ export async function carregarCupons() {
         await prepararOpcoesPromocao();
         atualizarCamposDeEscopo();
         atualizarCamposDePromocao();
+
+        let promotionLoadError = null;
+        promocoesAtivasCache = [];
+        if (!LOCAL_TEST_MODE) {
+            const promotionResult = await supabase.from('promocoes')
+                .select('id, target_tipo, target_valor, desconto_percentual, valor_minimo, criado_em')
+                .eq('ativo', true)
+                .order('criado_em', { ascending: false });
+            if (promotionResult.error) promotionLoadError = promotionResult.error;
+            else promocoesAtivasCache = promotionResult.data || [];
+        }
 
         if (div) {
             const coupons = couponResult.data || [];
@@ -154,7 +183,7 @@ export async function carregarCupons() {
                 div.innerHTML = `<div class="coupon-table-wrap"><table class="tabela-pedidos"><thead><tr><th>Código</th><th>Desconto</th><th>Mínimo</th><th>Aplicação</th><th>Restantes</th><th>Ação</th></tr></thead><tbody>${rows}</tbody></table></div>`;
             }
         }
-        renderPromocoesAtivas();
+        renderPromocoesAtivas(promocoesAtivasCache, promotionLoadError);
     } catch (error) {
         if (div) div.innerHTML = '<p class="coupon-error">Não foi possível carregar cupons e produtos. Tente novamente.</p>';
         const promoList = document.getElementById('lista-produtos-promocao');
@@ -221,42 +250,58 @@ export async function salvarPromocao(event) {
     const type = document.getElementById('promo-tipo').value;
     const category = document.getElementById('promo-categoria').value;
     const productId = document.getElementById('promo-produto').value;
-    if (!Number.isInteger(percentual) || percentual < 1 || percentual > 99) return alert('Informe um desconto entre 1% e 99%.');
+    const minimumValue = document.getElementById('promo-minimo').value.trim();
+    const minimum = minimumValue === '' ? 0 : Number(minimumValue);
+    if (!['loja', 'categoria', 'produto'].includes(type)
+        || !Number.isInteger(percentual) || percentual < 1 || percentual > 99
+        || !Number.isFinite(minimum) || minimum < 0) {
+        return alert('Informe um desconto entre 1% e 99% e um pedido mínimo válido.');
+    }
 
-    const ativos = produtosPromocaoCache.filter(product => product.ativo);
+    const targetValue = type === 'categoria' ? category : type === 'produto' ? productId : null;
+    const activeProducts = produtosPromocaoCache.filter(product => product.ativo);
     const selected = type === 'categoria'
-        ? ativos.filter(product => product.categoria === category)
-        : type === 'produto' ? ativos.filter(product => String(product.id) === productId) : ativos;
+        ? activeProducts.filter(product => product.categoria === category)
+        : type === 'produto' ? activeProducts.filter(product => String(product.id) === productId) : activeProducts;
     if ((type === 'categoria' && !category) || (type === 'produto' && !productId) || !selected.length) {
         return alert('Selecione uma seção ou produto ativo para aplicar a promoção.');
     }
 
     const button = event.submitter;
-    if (button) { button.disabled = true; button.textContent = 'APLICANDO...'; }
-    const changes = selected.map(product => {
-        const current = safeNumber(product.preco);
-        const listed = safeNumber(product.preco_original);
-        const basePrice = listed > current ? listed : current;
-        return { product, basePrice, price: Math.round(basePrice * (1 - percentual / 100) * 100) / 100 };
-    });
-    const results = await Promise.all(changes.map(({ product, basePrice, price }) =>
-        supabase.from('produtos').update({ preco_original: basePrice, preco: price }).eq('id', product.id)
-    ));
-    const failed = results.filter(result => result.error);
+    if (button) { button.disabled = true; button.textContent = 'SALVANDO...'; }
+    const { error } = await supabase.from('promocoes').insert([{
+        target_tipo: type,
+        target_valor: targetValue,
+        desconto_percentual: percentual,
+        valor_minimo: minimum,
+        ativo: true
+    }]);
     if (button) { button.disabled = false; button.textContent = 'APLICAR PROMOÇÃO'; }
-    if (failed.length) {
-        await carregarCupons();
-        alert(`A promoção foi salva parcialmente: ${changes.length - failed.length} de ${changes.length} produtos atualizados. Confira o estoque e tente novamente para os demais.`);
+    if (error) {
+        if (error.code === '42P01' || error.code === 'PGRST205' || error.code === 'PGRST204') {
+            alert('A tabela de promoções ainda não existe. Aplique a migration descrita em MIGRACAO_CUPONS.md.');
+        } else {
+            alert('Não foi possível salvar a promoção. Confira a conexão e as permissões do Supabase.');
+        }
         return;
     }
-
     document.getElementById('promo-percentual').value = '';
+    document.getElementById('promo-minimo').value = '';
     await carregarCupons();
-    alert(`Promoção de ${percentual}% aplicada a ${changes.length} produto(s).`);
+    alert(`Promoção de ${percentual}% cadastrada para ${selected.length} produto(s)${minimum > 0 ? ` a partir de R$ ${formatCurrencyBR(minimum)} no subtotal dos produtos` : ''}.`);
 }
 
-export async function removerPromocao(id) {
+export async function deletarPromocao(id) {
     if (LOCAL_TEST_MODE) return showLocalMutationBlocked('Remover promoção');
+    const promotion = promocoesAtivasCache.find(item => String(item.id) === String(id));
+    if (!promotion || !confirm(`Remover esta promoção de ${safeNumber(promotion.desconto_percentual)}%?`)) return;
+    const { error } = await supabase.from('promocoes').delete().eq('id', id);
+    if (error) return alert('Não foi possível remover a promoção. Confira as permissões do Supabase.');
+    await carregarCupons();
+}
+
+export async function removerPromocaoProduto(id) {
+    if (LOCAL_TEST_MODE) return showLocalMutationBlocked('Restaurar preço do produto');
     const product = produtosPromocaoCache.find(item => String(item.id) === String(id));
     if (!product || !confirm(`Remover a promoção de ${product.nome} e restaurar o preço de R$ ${formatCurrencyBR(product.preco_original)}?`)) return;
     const { error } = await supabase.from('produtos').update({ preco: product.preco_original, preco_original: null }).eq('id', id);

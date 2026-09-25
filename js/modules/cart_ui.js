@@ -10,6 +10,10 @@ export function initCartUI() {
     renderAll();
 }
 
+export function refreshCartUI() {
+    renderAll();
+}
+
 // === AÇÕES DE INTERFACE ===
 export function handleAddToCart(product) {
     const result = addToCartLogic(product);
@@ -32,18 +36,43 @@ export function getCurrentCartValues() {
     const paySelect = document.getElementById('payment-method');
     const metodoPagamento = paySelect ? paySelect.value : '';
     const subtotalValues = calculateTotals(taxaEntregaAtual, 0, metodoPagamento);
+    const linePricing = getCartLinePricing(subtotalValues.subtotal);
+    const promotionDiscount = linePricing.reduce((sum, line) => sum + line.promotionDiscount, 0);
     const coupon = window.cupomAplicado;
-    if (!coupon) return subtotalValues;
+    if (!coupon) return { ...calculateTotals(taxaEntregaAtual, promotionDiscount, metodoPagamento), promotionDiscount, couponDiscount: 0 };
 
-    const cart = getCart();
     const eligibleSubtotal = coupon.target_tipo === 'frete'
         ? subtotalValues.frete
         : coupon.target_tipo === 'categoria'
-            ? cart.filter(item => (item.categoria || window.obaCategoriasPorProduto?.[String(item.id)]) === coupon.target_categoria)
-                .reduce((sum, item) => sum + (item.price * item.quantity), 0)
-            : subtotalValues.subtotal;
-    const discount = eligibleSubtotal * (safeNumber(coupon.desconto_percentual) / 100);
-    return calculateTotals(taxaEntregaAtual, discount, metodoPagamento);
+            ? linePricing.filter(line => (line.item.categoria || window.obaCategoriasPorProduto?.[String(line.item.id)]) === coupon.target_categoria)
+                .reduce((sum, line) => sum + (line.unitPrice * line.item.quantity), 0)
+            : Math.max(0, subtotalValues.subtotal - promotionDiscount);
+    const couponDiscount = eligibleSubtotal * (safeNumber(coupon.desconto_percentual) / 100);
+    return {
+        ...calculateTotals(taxaEntregaAtual, promotionDiscount + couponDiscount, metodoPagamento),
+        promotionDiscount,
+        couponDiscount
+    };
+}
+
+export function getCartLinePricing(subtotal = null) {
+    const cart = getCart();
+    const orderSubtotal = subtotal === null
+        ? cart.reduce((sum, item) => sum + (safeNumber(item.price) * safeNumber(item.quantity)), 0)
+        : subtotal;
+
+    return cart.map(item => {
+        const promotion = item.promotion;
+        const eligible = Boolean(promotion) && orderSubtotal >= safeNumber(promotion.valor_minimo);
+        const percentage = eligible ? safeNumber(promotion.desconto_percentual) : 0;
+        const unitPrice = Math.round(safeNumber(item.price) * (1 - percentage / 100) * 100) / 100;
+        return {
+            item,
+            unitPrice,
+            promotionApplied: eligible,
+            promotionDiscount: Math.max(0, safeNumber(item.price) - unitPrice) * safeNumber(item.quantity)
+        };
+    });
 }
 
 // === EXPOSIÇÃO GLOBAL (Para o HTML) ===
@@ -81,11 +110,18 @@ function renderCartList() {
         return;
     }
 
-    container.innerHTML = cart.map(item => {
+    const linePricing = getCartLinePricing();
+    container.innerHTML = cart.map((item, index) => {
         const itemId = inlineJSString(item.id);
         const itemIdAttr = escapeAttribute(item.id);
         const itemName = escapeHTML(item.name);
-        const itemPrice = formatCurrencyBR(item.price);
+        const pricing = linePricing[index];
+        const itemPrice = formatCurrencyBR(pricing.unitPrice);
+        const priceHTML = pricing.promotionApplied
+            ? `<span class="cart-promo-price"><s>R$ ${formatCurrencyBR(item.price)}</s><strong>R$ ${itemPrice} un.</strong></span>`
+            : `<span class="item-price">R$ ${itemPrice} un.</span>`;
+        const conditionHTML = item.promotion && !pricing.promotionApplied && safeNumber(item.promotion.valor_minimo) > 0
+            ? `<small class="cart-promo-condition">Promoção de ${safeNumber(item.promotion.desconto_percentual)}% a partir de R$ ${formatCurrencyBR(item.promotion.valor_minimo)} no subtotal dos produtos.</small>` : '';
         const itemQuantity = safeNumber(item.quantity, 1);
         const itemStock = safeNumber(item.estoque, 1);
 
@@ -93,7 +129,8 @@ function renderCartList() {
         <div class="cart-item">
             <div class="item-info">
                 <span class="item-name">${itemName}</span>
-                <span class="item-price">R$ ${itemPrice} un.</span>
+                ${priceHTML}
+                ${conditionHTML}
             </div>
             <div class="item-controls">
                 <span class="quantity-label">Qtd:</span>
@@ -110,6 +147,20 @@ function renderCartTotals() {
     const elTotal = document.getElementById('cart-total');
 
     if(elSub) elSub.innerText = `R$ ${values.subtotal.toFixed(2).replace('.', ',')}`;
+
+    let promoDiscountLine = document.getElementById('promotion-discount-line');
+    if (!promoDiscountLine && elSub?.parentElement) {
+        promoDiscountLine = document.createElement('div');
+        promoDiscountLine.id = 'promotion-discount-line';
+        promoDiscountLine.className = 'total-line discount-line';
+        promoDiscountLine.innerHTML = '<span>Desconto de promoções:</span><span id="promotion-discount-value">- R$ 0,00</span>';
+        elSub.parentElement.after(promoDiscountLine);
+    }
+    if (promoDiscountLine) {
+        promoDiscountLine.style.display = values.promotionDiscount > 0 ? 'flex' : 'none';
+        const promoValue = document.getElementById('promotion-discount-value');
+        if (promoValue) promoValue.textContent = `- R$ ${values.promotionDiscount.toFixed(2).replace('.', ',')}`;
+    }
 
     let taxaCartaoLine = document.getElementById('taxa-cartao-line');
     if (!taxaCartaoLine && elTotal) {

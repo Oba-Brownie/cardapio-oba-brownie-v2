@@ -67,7 +67,8 @@ window.carregarCupons = Coupons.carregarCupons;
 window.salvarCupom = Coupons.salvarCupom;
 window.deletarCupom = Coupons.deletarCupom;
 window.salvarPromocao = Coupons.salvarPromocao;
-window.removerPromocao = Coupons.removerPromocao;
+window.deletarPromocao = Coupons.deletarPromocao;
+window.removerPromocaoProduto = Coupons.removerPromocaoProduto;
 
 window.gerarRelatorio = Reports.gerarRelatorio;
 

@@ -33,6 +33,25 @@ export function getCart() {
     return cart; 
 }
 
+export function syncCartProducts(products = []) {
+    const productsById = new Map(products.map(product => [String(product.id), product]));
+    let changed = false;
+
+    cart.forEach(item => {
+        const product = productsById.get(String(item.id));
+        if (!product) return;
+        item.name = product.name;
+        item.price = parseFloat(product.price);
+        item.image = product.image;
+        item.estoque = product.estoque;
+        item.categoria = product.categoria || 'Outros';
+        item.promotion = product.promotion || null;
+        changed = true;
+    });
+
+    if (changed) saveCartMemory();
+}
+
 export function addToCartLogic(product) {
     const idProduto = String(product.id);
     const existingItem = cart.find(i => String(i.id) === idProduto);
