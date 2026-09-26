@@ -3,7 +3,7 @@ import { LISTA_BAIRROS } from '../config/constants.js';
 import { getCart, clearCart } from './cart_service.js';
 import { getCurrentCartValues, getCartLinePricing, setTaxaEntregaUI } from './cart_ui.js';
 import { LOCAL_TEST_MODE } from './local_test_mode.js';
-import { clearCheckoutRequestId, createOrderWithStockReservation, getOrCreateCheckoutRequestId, roundCurrency } from './order_submission.js';
+import { clearCheckoutRequestId, createOrderWithStockReservation, getOrCreateCheckoutRequestId, hasRequiredPickupObservation, roundCurrency } from './order_submission.js';
 import { TURNSTILE_SITE_KEY } from '../config/turnstile-config.js';
 import { copyToClipboard, escapeHTML, formatCurrencyBR, safeNumber } from './utils.js';
 
@@ -132,8 +132,24 @@ export function syncDeliveryState() {
     const pickupInfo = document.getElementById('pickup-address-info');
     const deliveryFeeLine = document.getElementById('delivery-fee-line');
     const bairroSelect = document.getElementById('bairro-select');
+    const observationLabel = document.querySelector('label[for="customer-observation"]');
+    const observationField = document.getElementById('customer-observation');
+    const isPickup = selectedOption?.value === 'pickup';
 
-    if (selectedOption && selectedOption.value === 'pickup') {
+    if (observationLabel) {
+        observationLabel.textContent = isPickup
+            ? 'Observação (Obrigatória para retirada)'
+            : 'Observação (Opcional)';
+    }
+    if (observationField) {
+        observationField.required = isPickup;
+        observationField.setAttribute('aria-required', String(isPickup));
+        observationField.placeholder = isPickup
+            ? 'Informe o horário em que pretende buscar o pedido (ex.: hoje às 15h).'
+            : 'Informações para o pedido, ex.: caso seja para outra pessoa, informe quem irá receber.';
+    }
+
+    if (isPickup) {
         if (deliveryFields) deliveryFields.style.display = 'none';
         if (pickupInfo) pickupInfo.style.display = 'block';
         if (deliveryFeeLine) deliveryFeeLine.style.display = 'none';
@@ -172,9 +188,16 @@ async function handleCheckout() {
     const address = document.getElementById('customer-address').value;
     const bairroNome = document.getElementById('bairro-select').value;
     const reference = document.getElementById('customer-reference').value;
+    const observation = document.getElementById('customer-observation').value.trim();
 
     if (deliveryType === 'delivery' && (!address || bairroNome === "Selecione o bairro...")) {
         return alert("Para delivery, por favor, preencha o bairro e o endereço.");
+    }
+
+    if (!hasRequiredPickupObservation(deliveryType, observation)) {
+        alert('Para retirada, informe nas observações o horário em que vai buscar o pedido.');
+        document.getElementById('customer-observation').focus();
+        return;
     }
 
     let scheduledTime = '';
@@ -225,7 +248,7 @@ async function handleCheckout() {
                 telefone: phone,
                 endereco: deliveryType === 'delivery' ? `${address} - ${bairroNome}` : 'Retirada no Local',
                 ref: reference, pagamento: paymentMethod, troco: document.getElementById('troco-para').value,
-                obs: document.getElementById('customer-observation').value, tipo: deliveryType,
+                obs: observation, tipo: deliveryType,
                 horario_agendado: isScheduling ? scheduledTime : null,
                 cupom_usado: window.cupomAplicado ? window.cupomAplicado.codigo : null,
                 valor_frete: valorFrete, taxa_maquininha: taxaCartao, valor_desconto: valorDesconto
@@ -315,8 +338,7 @@ async function handleCheckout() {
         message += `\n*ATENÇÃO INTERNA:* estoque reservado para este pedido; a baixa será confirmada ao iniciar a preparação.\n`;
     }
 
-    const obs = document.getElementById('customer-observation').value;
-    if (obs) message += `\n*OBSERVAÇÃO:* *${obs.trim()}*\n`;
+    if (observation) message += `\n*OBSERVAÇÃO:* *${observation}*\n`;
 
     message += `\n--- *ITENS DO PEDIDO* ---\n`;
     getCartLinePricing().forEach(({ item, unitPrice, promotionApplied }) => {

@@ -4,6 +4,7 @@ import {
     clearCheckoutRequestId,
     createOrderWithStockReservation,
     getOrCreateCheckoutRequestId,
+    hasRequiredPickupObservation,
     roundCurrency
 } from './order_submission.js';
 
@@ -33,6 +34,13 @@ test('monetary values are normalized to cents before sending them to the databas
     assert.equal(roundCurrency(0.1 + 0.2), 0.3);
     assert.equal(roundCurrency(8.6 + 0.2), 8.8);
     assert.equal(roundCurrency(12.345), 12.35);
+});
+
+test('pickup requires an observation while delivery keeps it optional', () => {
+    assert.equal(hasRequiredPickupObservation('pickup', ''), false);
+    assert.equal(hasRequiredPickupObservation('pickup', '   '), false);
+    assert.equal(hasRequiredPickupObservation('pickup', 'Vou buscar às 15h'), true);
+    assert.equal(hasRequiredPickupObservation('delivery', ''), true);
 });
 
 test('checkout sends order, idempotency key and challenge token through the server function', async () => {

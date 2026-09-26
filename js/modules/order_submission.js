@@ -6,6 +6,10 @@ export function roundCurrency(value) {
     return Math.round((amount + Number.EPSILON) * 100) / 100;
 }
 
+export function hasRequiredPickupObservation(deliveryType, observation) {
+    return deliveryType !== 'pickup' || String(observation ?? '').trim().length > 0;
+}
+
 export function getOrCreateCheckoutRequestId(storage = globalThis.localStorage, createId = () => globalThis.crypto.randomUUID()) {
     let requestId = storage.getItem(CHECKOUT_REQUEST_KEY);
     if (!requestId) {
