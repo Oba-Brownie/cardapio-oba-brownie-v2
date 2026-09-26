@@ -3,7 +3,7 @@ import { LISTA_BAIRROS } from '../config/constants.js';
 import { getCart, clearCart } from './cart_service.js';
 import { getCurrentCartValues, getCartLinePricing, setTaxaEntregaUI } from './cart_ui.js';
 import { LOCAL_TEST_MODE } from './local_test_mode.js';
-import { clearCheckoutRequestId, createOrderWithStockReservation, getOrCreateCheckoutRequestId } from './order_submission.js';
+import { clearCheckoutRequestId, createOrderWithStockReservation, getOrCreateCheckoutRequestId, roundCurrency } from './order_submission.js';
 import { TURNSTILE_SITE_KEY } from '../config/turnstile-config.js';
 import { copyToClipboard, escapeHTML, formatCurrencyBR, safeNumber } from './utils.js';
 
@@ -207,16 +207,16 @@ async function handleCheckout() {
     btn.textContent = 'Reservando estoque...';
 
     // === CÁLCULOS ===
-    let valorDesconto = cartValues.desconto || 0;
-    const subtotalComDesconto = cartValues.subtotal - valorDesconto;
-
-    const taxaCartao = cartValues.taxaCartao || 0;
-    const totalFinal = subtotalComDesconto + cartValues.frete + taxaCartao;
+    const valorDesconto = roundCurrency(cartValues.desconto || 0);
+    const valorFrete = roundCurrency(cartValues.frete || 0);
+    const subtotalPedido = roundCurrency(cartValues.subtotal || 0);
+    const taxaCartao = roundCurrency(cartValues.taxaCartao || 0);
+    const totalFinal = roundCurrency(subtotalPedido - valorDesconto + valorFrete + taxaCartao);
     let pedidoRegistradoNoBanco = false;
 
     try {
         const itensOtimizados = getCartLinePricing().map(({ item, unitPrice }) => ({
-            id: item.id, name: item.name, price: unitPrice, quantity: item.quantity
+            id: item.id, name: item.name, price: roundCurrency(unitPrice), quantity: item.quantity
         }));
 
         const pedido = {
@@ -228,7 +228,7 @@ async function handleCheckout() {
                 obs: document.getElementById('customer-observation').value, tipo: deliveryType,
                 horario_agendado: isScheduling ? scheduledTime : null,
                 cupom_usado: window.cupomAplicado ? window.cupomAplicado.codigo : null,
-                valor_frete: cartValues.frete, taxa_maquininha: taxaCartao, valor_desconto: valorDesconto
+                valor_frete: valorFrete, taxa_maquininha: taxaCartao, valor_desconto: valorDesconto
             },
             itens: itensOtimizados, total: totalFinal
         };
@@ -262,6 +262,9 @@ async function handleCheckout() {
             }
             if (data?.code === 'CHECKOUT_NOT_CONFIGURED') {
                 return alert('O checkout ainda não está configurado para receber pedidos. Avise a loja pelo WhatsApp.');
+            }
+            if (data?.code === 'INVALID_ORDER') {
+                return alert('Não foi possível validar os valores do pedido. Atualize o carrinho e tente novamente. Se persistir, fale com a loja pelo WhatsApp.');
             }
             if (data?.code === 'SECURITY_CHECK_UNAVAILABLE' || data?.code === 'CHECKOUT_TEMPORARILY_UNAVAILABLE') {
                 return alert('A verificação do pedido está temporariamente indisponível. Tente novamente em alguns minutos.');
@@ -318,13 +321,13 @@ async function handleCheckout() {
     message += `\n--- *ITENS DO PEDIDO* ---\n`;
     getCartLinePricing().forEach(({ item, unitPrice, promotionApplied }) => {
         const promotionalNote = promotionApplied ? ' (promoção)' : '';
-        message += `*${item.quantity}x ${item.name}*${promotionalNote} - *R$ ${(unitPrice * item.quantity).toFixed(2).replace('.', ',')}*\n`;
+        message += `*${item.quantity}x ${item.name}*${promotionalNote} - *R$ ${roundCurrency(unitPrice * item.quantity).toFixed(2).replace('.', ',')}*\n`;
     });
 
-    message += `\n*Subtotal:* *R$ ${cartValues.subtotal.toFixed(2).replace('.', ',')}*`;
-    if (deliveryType === 'delivery') message += `\n*VALOR DA ENTREGA:* *R$ ${cartValues.frete.toFixed(2).replace('.', ',')}*\n`;
-    if (cartValues.promotionDiscount > 0) message += `\n*Promoções:* *-R$ ${cartValues.promotionDiscount.toFixed(2).replace('.', ',')}*`;
-    if (window.cupomAplicado) message += `\n*🎟️ Cupom (${window.cupomAplicado.codigo}):* *-R$ ${(cartValues.couponDiscount || 0).toFixed(2).replace('.', ',')}*`;
+    message += `\n*Subtotal:* *R$ ${subtotalPedido.toFixed(2).replace('.', ',')}*`;
+    if (deliveryType === 'delivery') message += `\n*VALOR DA ENTREGA:* *R$ ${valorFrete.toFixed(2).replace('.', ',')}*\n`;
+    if (cartValues.promotionDiscount > 0) message += `\n*Promoções:* *-R$ ${roundCurrency(cartValues.promotionDiscount).toFixed(2).replace('.', ',')}*`;
+    if (window.cupomAplicado) message += `\n*🎟️ Cupom (${window.cupomAplicado.codigo}):* *-R$ ${roundCurrency(cartValues.couponDiscount || 0).toFixed(2).replace('.', ',')}*`;
     if (taxaCartao > 0) message += `\n*Taxa Maquininha:* *R$ ${taxaCartao.toFixed(2).replace('.', ',')}*`;
     message += `\n\n*Total:* *R$ ${totalFinal.toFixed(2).replace('.', ',')}*`;
     message += `\n\n*${TRIANGULOS}*`;

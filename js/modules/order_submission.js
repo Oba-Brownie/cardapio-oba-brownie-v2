@@ -1,5 +1,11 @@
 const CHECKOUT_REQUEST_KEY = 'oba_checkout_request_id';
 
+export function roundCurrency(value) {
+    const amount = Number(value);
+    if (!Number.isFinite(amount)) return 0;
+    return Math.round((amount + Number.EPSILON) * 100) / 100;
+}
+
 export function getOrCreateCheckoutRequestId(storage = globalThis.localStorage, createId = () => globalThis.crypto.randomUUID()) {
     let requestId = storage.getItem(CHECKOUT_REQUEST_KEY);
     if (!requestId) {

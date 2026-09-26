@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {
     clearCheckoutRequestId,
     createOrderWithStockReservation,
-    getOrCreateCheckoutRequestId
+    getOrCreateCheckoutRequestId,
+    roundCurrency
 } from './order_submission.js';
 
 function createStorage() {
@@ -26,6 +27,12 @@ test('checkout request id is stable across retries and cleared after success', (
 
     clearCheckoutRequestId(storage);
     assert.equal(getOrCreateCheckoutRequestId(storage, createId), 'request-2');
+});
+
+test('monetary values are normalized to cents before sending them to the database', () => {
+    assert.equal(roundCurrency(0.1 + 0.2), 0.3);
+    assert.equal(roundCurrency(8.6 + 0.2), 8.8);
+    assert.equal(roundCurrency(12.345), 12.35);
 });
 
 test('checkout sends order, idempotency key and challenge token through the server function', async () => {
