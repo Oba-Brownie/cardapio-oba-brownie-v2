@@ -1,6 +1,6 @@
 # Reserva concorrente de estoque
 
-**Estado em 26/09/2026:** backup completo criado; migration aplicada ao Supabase de produção; Edge Function `criar-pedido` publicada (v1). O frontend ainda não foi publicado e o checkout permanece fechado até configurar Turnstile e reconciliar os pedidos legados.
+**Estado em 26/09/2026:** backup completo criado; migration aplicada ao Supabase de produção; Edge Function `criar-pedido` publicada (v1); chaves Turnstile configuradas e token inválido rejeitado. O frontend compatível ainda será publicado; a loja permanece fechada até conferir os pedidos legados.
 
 ## Regra
 
@@ -18,19 +18,15 @@ O SQL versionado está em [`database/migrations/20260926_reserva_estoque_concorr
 
 ### Próximos passos antes de abrir o checkout
 
-1. Criar no Cloudflare Turnstile um widget que aceite o hostname `oba-brownie.github.io` e usar a ação `checkout`.
-2. Colocar a **site key pública** em `js/config/turnstile-config.js`.
-3. Cadastrar a **secret key privada** em Supabase → Edge Functions → Secrets, com o nome `TURNSTILE_SECRET_KEY`. O valor não deve ser enviado pelo chat nem salvo no frontend/Git.
-4. A Edge Function `criar-pedido` já foi publicada no projeto correto. Ela usa `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` no ambiente seguro do Supabase; falta cadastrar `TURNSTILE_SECRET_KEY`.
-5. Publicar o frontend compatível após configurar a site key pública e autenticar o GitHub CLI.
-6. Conferir manualmente os pedidos `Novo` anteriores à migration antes de preparar ou abrir a loja. Há 22 pedidos legados; a demanda de um produto (Coxinha costela com catupiry) excede o estoque atual e quatro itens não correspondem a produtos do catálogo. Nenhum saldo foi alterado para esses pedidos.
-7. Confirmar antes de reabrir o checkout: token inválido, expirado, reutilizado, hostname/ação incorretos e origem diferente devem falhar sem criar pedido; token válido deve criar pedido e reserva. Uma chamada anônima direta à RPC deve ser negada.
+1. Publicar o frontend compatível, que já contém a **site key pública**. A secret `TURNSTILE_SECRET_KEY` está configurada no Supabase; o endpoint rejeitou o token inválido de diagnóstico sem criar pedido.
+2. Conferir manualmente os pedidos `Novo` anteriores à migration antes de preparar ou abrir a loja. Há 22 pedidos legados; a demanda de um produto (Coxinha costela com catupiry) excede o estoque atual e quatro itens não correspondem a produtos do catálogo. Nenhum saldo foi alterado para esses pedidos.
+3. Antes de reabrir o checkout, confirmar: token inválido, expirado, reutilizado, hostname/ação incorretos e origem diferente falham sem criar pedido; token válido cria pedido e reserva. Uma chamada anônima direta à RPC deve ser negada.
 
 Concluído em produção:
 
 - Backup completo criado fora do repositório, com `roles.sql`, `schema.sql` e `data.sql` não vazios.
 - Estrutura atual, RLS e privilégios inspecionados; migration registrada no histórico do Supabase; nenhuma reserva inválida encontrada após aplicar.
-- Edge Function `criar-pedido` publicada. O frontend continua pendente de publicação e a função falha de forma fechada enquanto a chave Turnstile não estiver configurada.
+- Edge Function `criar-pedido` publicada e secret Turnstile configurada; token inválido de diagnóstico foi rejeitado sem criar pedido. O frontend ainda está pendente de publicação.
 - Testes locais de fluxo de pedido/admin: 8 passaram. A concorrência real no banco ainda não foi testada em branch isolada.
 
 O rollback não deve remover ledger nem liberar reservas automaticamente. Primeiro interrompa a entrada de pedidos, reconcilie pedidos/reservas ativos e aplique um rollback SQL revisado; não restaure INSERT direto do checkout antigo sem uma barreira contra venda concorrente.
