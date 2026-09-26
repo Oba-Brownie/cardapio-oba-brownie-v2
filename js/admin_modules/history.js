@@ -4,6 +4,7 @@
 /* ================================================= */
 
 import { supabase } from '../config/supabase-config.js';
+import { cancelOrderAndReleaseStock } from './order_workflow.js';
 import { verDetalhesPedido, imprimirPedido, enviarWhatsAppEntregador } from './orders.js';
 import { escapeHTML, formatCurrencyBR, inlineJSString, safeCssToken } from '../modules/utils.js';
 import { LOCAL_TEST_MODE, getMockPedidos, showLocalMutationBlocked } from '../modules/local_test_mode.js';
@@ -115,10 +116,10 @@ export async function excluirPedidoHistorico(id) {
         return;
     }
 
-    if (confirm("Tem certeza que deseja EXCLUIR este pedido do histórico?")) {
-        const { error } = await supabase.from('pedidos').delete().eq('id', id);
+    if (confirm("Remover este pedido do histórico? Se ainda estiver em Novos, será cancelado e a reserva será liberada.")) {
+        const { error } = await cancelOrderAndReleaseStock(supabase, id);
         if (error) {
-            alert("Erro ao excluir: " + error.message);
+            alert("Não foi possível cancelar: " + error.message);
         } else {
             carregarHistorico(); 
         }

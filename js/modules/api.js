@@ -101,7 +101,7 @@ export async function fetchProducts(options = {}) {
     try {
         const { data, error } = await supabase
             .from('produtos')
-            .select('id, nome, descricao, preco, preco_original, imagem, categoria, estoque, destaque, ordem')
+            .select('id, nome, descricao, preco, preco_original, imagem, categoria, estoque, estoque_reservado, destaque, ordem')
             .eq('ativo', true)
             .order('ordem', { ascending: true });
 
@@ -136,7 +136,7 @@ export async function fetchProducts(options = {}) {
                 } : null,
                 image: item.imagem || 'https://placehold.co/400x400?text=Sem+Foto',
                 categoria: category,
-                estoque: item.estoque,
+                estoque: Math.max(0, Number(item.estoque || 0) - Number(item.estoque_reservado || 0)),
                 destaque: item.destaque || false,
                 ordem: item.ordem || 999
             };

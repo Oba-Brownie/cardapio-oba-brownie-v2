@@ -10,6 +10,12 @@
     <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16x16.png">
     <link rel="manifest" href="images/site.webmanifest">
     <link rel="stylesheet" href="css/style.css?v=promocoes-minimo-1">
+    <script>
+        window.obaTurnstileOnLoad = function () {
+            document.dispatchEvent(new Event('oba:turnstile-ready'));
+        };
+    </script>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=obaTurnstileOnLoad&amp;render=explicit" async defer></script>
 </head>
 <body>
     <a class="skip-link" href="#cardapio">Pular para o cardápio</a>
@@ -191,6 +197,7 @@
     </section>
 
     <div class="final-checkout-button-container">
+        <div id="checkout-turnstile" aria-live="polite"></div>
         <button id="checkout-button" type="button">Enviar Pedido no WhatsApp</button>
     </div>
 
@@ -220,7 +227,7 @@
         </div>
     </div>
 
-    <script type="module" src="js/main.js?v=visual-3"></script>
+    <script type="module" src="js/main.js?v=reserva-estoque-1"></script>
 
 </body>
 </html>

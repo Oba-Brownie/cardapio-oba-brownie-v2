@@ -74,6 +74,7 @@
 .card-pedido.status-Novo { border-left-color: var(--primary); background: #fff7fb; animation: piscar 2.8s infinite; }
 .card-pedido.status-Entrega { border-left-color: var(--warning); }
 .card-pedido.status-Concluido { border-left-color: var(--success); opacity: 0.88; }
+.order-stock-warning { margin: 7px 0; padding: 7px; border-radius: 5px; background: #fff3cd; color: #704f00; font-size: 0.82em; }
 
 @keyframes piscar { 50% { background: #fffefd; } }
 

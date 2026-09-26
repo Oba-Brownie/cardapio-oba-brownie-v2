@@ -2,7 +2,7 @@
 
 ## Estado
 
-No projeto Supabase `diyskqeunfunotqfmncq`, branch `main (PRODUCTION)`, a migration foi aplicada em 25/09/2026 depois da criação do backup. A transação criou as colunas de escopo dos cupons, `public.promocoes`, a allowlist privada de admins e os RPCs; substituiu as policies abertas a qualquer usuário autenticado. O frontend correspondente ainda precisa ser publicado para restabelecer a validação de cupons e exibir as promoções.
+No projeto Supabase `diyskqeunfunotqfmncq`, branch `main (PRODUCTION)`, as migrations foram aplicadas em 25/09/2026 depois da criação do backup. Além do escopo de cupons, tabela `public.promocoes`, allowlist privada e RPCs, a segunda migration adicionou constraints de integridade, o índice de configuração singleton e `public.pedidos` à publicação Realtime. As policies abertas a qualquer usuário autenticado foram substituídas.
 
 ## Administradores
 
@@ -25,8 +25,8 @@ O checkout ainda envia preços, descontos e total calculados no navegador e grav
 ## Sequência de implantação
 
 1. O backup lógico está em `%LOCALAPPDATA%\ObaBrownieBackups\Temp-Oba-Brownie-2026-09-24`, com `roles.sql`, `schema.sql` e `data.sql`. O dump de dados contém pedidos/clientes e deve ficar privado. A restauração ainda não foi ensaiada em outro projeto.
-2. Publicar o frontend atualizado imediatamente. Até a atualização chegar ao site, a versão antiga não consegue consultar cupons pelo novo RPC; o admin continua limitado no banco às duas contas allowlist.
-3. Validar no site o login dos dois admins, o bloqueio de usuário comum, listagem de produtos e promoções ativas, lookup de cupom e criação de pedido.
+2. O frontend atualizado está no repositório local; a publicação no site deve ser confirmada separadamente.
+3. Validar no site o login dos dois admins, o bloqueio de usuário comum, listagem de produtos e promoções ativas, lookup de cupom, criação de pedido e alerta Realtime.
 4. Implementar a RPC transacional de checkout antes de depender do banco para valores ou estoque.
 
-As alterações de schema e policies foram aplicadas remotamente; não houve alteração em pedidos/produtos existentes. O frontend desta migration está sendo publicado nesta atualização.
+As alterações de schema e policies foram aplicadas remotamente; não houve alteração nos pedidos, produtos ou cupons existentes.

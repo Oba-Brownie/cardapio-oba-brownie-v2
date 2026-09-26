@@ -1,0 +1,42 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {
+    clearCheckoutRequestId,
+    createOrderWithStockReservation,
+    getOrCreateCheckoutRequestId
+} from './order_submission.js';
+
+function createStorage() {
+    const values = new Map();
+    return {
+        getItem: key => values.get(key) ?? null,
+        setItem: (key, value) => values.set(key, value),
+        removeItem: key => values.delete(key)
+    };
+}
+
+test('checkout request id is stable across retries and cleared after success', () => {
+    const storage = createStorage();
+    let calls = 0;
+    const createId = () => `request-${++calls}`;
+
+    assert.equal(getOrCreateCheckoutRequestId(storage, createId), 'request-1');
+    assert.equal(getOrCreateCheckoutRequestId(storage, createId), 'request-1');
+    assert.equal(calls, 1);
+
+    clearCheckoutRequestId(storage);
+    assert.equal(getOrCreateCheckoutRequestId(storage, createId), 'request-2');
+});
+
+test('checkout sends order, idempotency key and challenge token through the server function', async () => {
+    const calls = [];
+    const supabase = { functions: { invoke: async (...args) => { calls.push(args); return { data: { ok: true }, error: null }; } } };
+    const order = { cliente_nome: 'Cliente', itens: [{ id: '9', quantity: 1 }], total: 12 };
+
+    await createOrderWithStockReservation(supabase, order, 'request-123', 'turnstile-token');
+
+    assert.deepEqual(calls, [[
+        'criar-pedido',
+        { body: { pedido: order, request_id: 'request-123', turnstile_token: 'turnstile-token' } }
+    ]]);
+});

@@ -3,14 +3,50 @@ import { LISTA_BAIRROS } from '../config/constants.js';
 import { getCart, clearCart } from './cart_service.js';
 import { getCurrentCartValues, getCartLinePricing, setTaxaEntregaUI } from './cart_ui.js';
 import { LOCAL_TEST_MODE } from './local_test_mode.js';
+import { clearCheckoutRequestId, createOrderWithStockReservation, getOrCreateCheckoutRequestId } from './order_submission.js';
+import { TURNSTILE_SITE_KEY } from '../config/turnstile-config.js';
 import { copyToClipboard, escapeHTML, formatCurrencyBR, safeNumber } from './utils.js';
 
 const audioConfirmacao = new Audio('audio/confirmar_encomenda.mp3');
+let checkoutTurnstileWidgetId = null;
+let checkoutTurnstileToken = null;
 
 export function setupCheckout(canShop) {
     setupBairrosSelect();
     setupEventListeners(canShop);
+    setupTurnstile();
     syncDeliveryState();
+}
+
+function setupTurnstile() {
+    const container = document.getElementById('checkout-turnstile');
+    if (!container) return;
+    if (!TURNSTILE_SITE_KEY) {
+        container.textContent = 'Verificação de segurança não configurada.';
+        return;
+    }
+
+    const renderWidget = () => {
+        if (checkoutTurnstileWidgetId !== null || !window.turnstile) return;
+        checkoutTurnstileWidgetId = window.turnstile.render(container, {
+            sitekey: TURNSTILE_SITE_KEY,
+            action: 'checkout',
+            callback: token => { checkoutTurnstileToken = token; },
+            'expired-callback': () => { checkoutTurnstileToken = null; },
+            'error-callback': () => { checkoutTurnstileToken = null; }
+        });
+    };
+
+    renderWidget();
+    document.addEventListener('oba:turnstile-ready', renderWidget, { once: true });
+}
+
+function consumeTurnstileToken() {
+    if (!checkoutTurnstileToken || checkoutTurnstileWidgetId === null || !window.turnstile) return null;
+    const token = checkoutTurnstileToken;
+    checkoutTurnstileToken = null;
+    window.turnstile.reset(checkoutTurnstileWidgetId);
+    return token;
 }
 
 function setupBairrosSelect() {
@@ -159,46 +195,16 @@ async function handleCheckout() {
         return finalizarPedidoMockado();
     }
 
+    const turnstileToken = consumeTurnstileToken();
+    if (!turnstileToken) {
+        return alert('Conclua a verificação de segurança abaixo do botão de pedido e tente novamente.');
+    }
+
     audioConfirmacao.play().catch(e => console.warn("Áudio bloqueado:", e));
 
     const btn = document.getElementById('checkout-button');
     btn.disabled = true;
-    btn.textContent = 'Validando itens...';
-
-    // =========================================================
-    // 🛡️ NOVA VALIDAÇÃO DE SEGURANÇA (O LEÃO DE CHÁCARA)
-    // =========================================================
-    try {
-        const idsNoCarrinho = cart.map(item => item.id);
-        const { data: produtosBanco, error: erroVal } = await supabase
-            .from('produtos')
-            .select('id, nome, ativo, estoque')
-            .in('id', idsNoCarrinho);
-
-        if (!erroVal && produtosBanco) {
-            for (const item of cart) {
-                // A CORREÇÃO ESTÁ AQUI: Envolver ambos em String() para a comparação bater certo!
-                const prodReal = produtosBanco.find(p => String(p.id) === String(item.id));
-
-                if (!prodReal || prodReal.ativo === false) {
-                    btn.disabled = false;
-                    btn.textContent = 'ENVIAR PEDIDO';
-                    return alert(`❌ O produto "${item.name}" não está mais disponível no momento. Por favor, remova-o do carrinho para continuar.`);
-                }
-
-                if (prodReal.estoque < item.quantity) {
-                    btn.disabled = false;
-                    btn.textContent = 'ENVIAR PEDIDO';
-                    return alert(`⚠️ Desculpe! Temos apenas ${prodReal.estoque} unidade(s) de "${item.name}" agora. Por favor, ajuste a quantidade no carrinho.`);
-                }
-            }
-        }
-    } catch (e) {
-        console.warn("Validação offline. O pedido seguirá normalmente via WhatsApp.");
-    }
-    // =========================================================
-
-    btn.textContent = 'Registrando Pedido...';
+    btn.textContent = 'Reservando estoque...';
 
     // === CÁLCULOS ===
     let valorDesconto = cartValues.desconto || 0;
@@ -207,9 +213,7 @@ async function handleCheckout() {
     const taxaCartao = cartValues.taxaCartao || 0;
     const totalFinal = subtotalComDesconto + cartValues.frete + taxaCartao;
     let pedidoRegistradoNoBanco = false;
-    const falhasBaixaEstoque = [];
 
-    // === TENTA SALVAR NO BANCO (MODO INDESTRUTÍVEL) ===
     try {
         const itensOtimizados = getCartLinePricing().map(({ item, unitPrice }) => ({
             id: item.id, name: item.name, price: unitPrice, quantity: item.quantity
@@ -226,48 +230,50 @@ async function handleCheckout() {
                 cupom_usado: window.cupomAplicado ? window.cupomAplicado.codigo : null,
                 valor_frete: cartValues.frete, taxa_maquininha: taxaCartao, valor_desconto: valorDesconto
             },
-            itens: itensOtimizados, total: totalFinal, status: 'Novo', data: new Date().toISOString()
+            itens: itensOtimizados, total: totalFinal
         };
 
-        const { error: erroPedido } = await supabase.from('pedidos').insert([pedido]);
-
-        if (erroPedido) {
-            console.warn("Pedido não registrado no Supabase. Enviando apenas via WhatsApp.", erroPedido);
-        } else {
-            pedidoRegistradoNoBanco = true;
-            // Atualiza estoque no banco
-            for (const item of cart) {
-                const { data: pAtual, error: erroConsultaEstoque } = await supabase.from('produtos').select('estoque').eq('id', item.id).single();
-                if (erroConsultaEstoque || !pAtual) {
-                    falhasBaixaEstoque.push(`${item.name}: estoque não consultado`);
-                    continue;
-                }
-
-                if ((pAtual.estoque - item.quantity) >= 0) {
-                    const { error: erroBaixaEstoque } = await supabase
-                        .from('produtos')
-                        .update({ estoque: pAtual.estoque - item.quantity })
-                        .eq('id', item.id);
-
-                    if (erroBaixaEstoque) {
-                        falhasBaixaEstoque.push(`${item.name}: ${erroBaixaEstoque.message || 'baixa bloqueada'}`);
-                    }
-                } else {
-                    falhasBaixaEstoque.push(`${item.name}: estoque insuficiente na baixa`);
-                }
+        const requestId = getOrCreateCheckoutRequestId();
+        const { data, error } = await createOrderWithStockReservation(supabase, pedido, requestId, turnstileToken);
+        if (error) {
+            if (['P0001', '22023', '42501'].includes(error.code)) clearCheckoutRequestId();
+            btn.disabled = false;
+            btn.textContent = 'ENVIAR PEDIDO';
+            const estoqueInsuficiente = error.code === 'P0001' || /estoque|dispon.vel/i.test(error.message || '');
+            if (['23505', 'P0002'].includes(error.code)) {
+                return alert('Já existe um pedido associado a esta tentativa ou ele foi cancelado. Não envie outro pedido pelo WhatsApp; fale com a loja para conferir.');
             }
-            if (window.cupomAplicado) {
-                const { error: erroBaixaCupom } = await supabase
-                    .from('cupons')
-                    .update({ quantidade: window.cupomAplicado.quantidade - 1 })
-                    .eq('id', window.cupomAplicado.id);
-                if (erroBaixaCupom) {
-                    console.warn("Cupom aplicado no pedido, mas a quantidade não foi baixada automaticamente.", erroBaixaCupom);
-                }
-            }
+            return alert(estoqueInsuficiente
+                ? 'Uma ou mais unidades acabaram antes de confirmarmos o pedido. Seu pedido não foi registrado. Atualize o cardápio e ajuste o carrinho.'
+                : 'Não foi possível reservar o estoque nem registrar o pedido. Confira sua conexão e tente novamente.');
         }
-    } catch (e) {
-        console.warn("Falha de conexão ao registrar pedido. Prosseguindo para o WhatsApp...", e);
+        if (!data?.ok) {
+            if (data?.code === 'STOCK_UNAVAILABLE' || data?.code === 'INVALID_ORDER') clearCheckoutRequestId();
+            btn.disabled = false;
+            btn.textContent = 'ENVIAR PEDIDO';
+            if (data?.code === 'STOCK_UNAVAILABLE') {
+                return alert('Uma ou mais unidades acabaram antes de confirmarmos o pedido. Seu pedido não foi registrado. Atualize o cardápio e ajuste o carrinho.');
+            }
+            if (data?.code === 'IDEMPOTENCY_CONFLICT' || data?.code === 'ORDER_NOT_AVAILABLE') {
+                return alert('Já existe um pedido associado a esta tentativa ou ele foi cancelado. Não envie outro pedido pelo WhatsApp; fale com a loja para conferir.');
+            }
+            if (data?.code === 'SECURITY_CHECK_FAILED') {
+                return alert('A verificação de segurança expirou ou não foi concluída. Resolva-a novamente e tente enviar.');
+            }
+            if (data?.code === 'CHECKOUT_NOT_CONFIGURED') {
+                return alert('O checkout ainda não está configurado para receber pedidos. Avise a loja pelo WhatsApp.');
+            }
+            if (data?.code === 'SECURITY_CHECK_UNAVAILABLE' || data?.code === 'CHECKOUT_TEMPORARILY_UNAVAILABLE') {
+                return alert('A verificação do pedido está temporariamente indisponível. Tente novamente em alguns minutos.');
+            }
+            return alert('Não foi possível confirmar a reserva do pedido. Tente novamente.');
+        }
+        pedidoRegistradoNoBanco = true;
+        clearCheckoutRequestId();
+    } catch {
+        btn.disabled = false;
+        btn.textContent = 'ENVIAR PEDIDO';
+        return alert('Não conseguimos confirmar se a reserva foi concluída. Não envie o pedido pelo WhatsApp ainda. Verifique sua conexão e tente novamente; a repetição usa a mesma chave para evitar pedido duplicado.');
     }
 
     // === GERAÇÃO DA MENSAGEM DO WHATSAPP ===
@@ -302,8 +308,8 @@ async function handleCheckout() {
 
     if (!pedidoRegistradoNoBanco) {
         message += `\n*ATENÇÃO INTERNA:* pedido não confirmado no painel automaticamente. Conferir manualmente.\n`;
-    } else if (falhasBaixaEstoque.length > 0) {
-        message += `\n*ATENÇÃO INTERNA:* pedido registrado, mas a baixa automática de estoque falhou. Conferir estoque manualmente.\n`;
+    } else {
+        message += `\n*ATENÇÃO INTERNA:* estoque reservado para este pedido; a baixa será confirmada ao iniciar a preparação.\n`;
     }
 
     const obs = document.getElementById('customer-observation').value;
@@ -336,8 +342,6 @@ async function handleCheckout() {
 
     if (!pedidoRegistradoNoBanco) {
         alert("Pedido pronto para enviar no WhatsApp, mas não foi confirmado no painel automaticamente. Avise a loja pelo WhatsApp.");
-    } else if (falhasBaixaEstoque.length > 0) {
-        alert("Pedido registrado. Atenção: o estoque não foi baixado automaticamente. A loja deve conferir manualmente.");
     }
 
     localStorage.removeItem('oba_cart');

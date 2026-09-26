@@ -6,6 +6,7 @@
 import { supabase } from '../config/supabase-config.js';
 import { escapeHTML, formatCurrencyBR, inlineJSString, safeCssToken, safeNumber } from '../modules/utils.js';
 import { LOCAL_TEST_MODE, findMockPedido, getMockPedidos, showLocalMutationBlocked } from '../modules/local_test_mode.js';
+import { cancelOrderAndReleaseStock, confirmOrderPreparation, getOrderBoardStage, transitionOrderStatus } from './order_workflow.js';
 
 // === UTILITÁRIOS DE DATA E HORA ===
 function corrigirDataUTC(dataString) {
@@ -33,7 +34,8 @@ function getClienteDados(pedido) {
 }
 
 function getStatusClass(status) {
-    return safeCssToken(status === 'Visto' ? 'Entrega' : String(status ?? '').replace(/\s+/g, ''));
+    if (status === 'Visto' || status === 'Em Preparação' || status === 'Em Entrega') return 'Entrega';
+    return safeCssToken(String(status ?? '').replace(/\s+/g, ''));
 }
 
 function getPrimeiroNome(nome) {
@@ -42,6 +44,15 @@ function getPrimeiroNome(nome) {
 
 // === CONTROLO DE ECRÃ LIGADO (WAKE LOCK) ===
 let wakeLock = null;
+let pedidosReloadTimer = null;
+
+function agendarAtualizacaoPedidos() {
+    clearTimeout(pedidosReloadTimer);
+    pedidosReloadTimer = setTimeout(() => {
+        pedidosReloadTimer = null;
+        carregarPedidosDoBanco();
+    }, 120);
+}
 
 async function manterTelaAcordada() {
     if ('wakeLock' in navigator) {
@@ -75,7 +86,7 @@ export async function iniciarMonitor() {
     supabase.channel('monitor-loja')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, (payload) => {
             if(payload.eventType === 'INSERT') tocarSom(payload.new);
-            carregarPedidosDoBanco();
+            agendarAtualizacaoPedidos();
         })
         .subscribe();
         
@@ -112,12 +123,11 @@ export async function carregarPedidosDoBanco() {
     const inicioAmanha = new Date(inicioHoje);
     inicioAmanha.setDate(inicioAmanha.getDate() + 1);
 
-    // Mostra somente pedidos do dia atual no kanban. Pedidos antigos ficam no histórico.
+    // Pedidos ainda novos ficam visíveis até serem preparados ou cancelados, pois mantêm estoque reservado.
     const { data } = await supabase.from('pedidos')
         .select('*')
         .neq('status', 'Arquivado')
-        .gte('data', inicioHoje.toISOString())
-        .lt('data', inicioAmanha.toISOString())
+        .or(`status.eq.Novo,and(data.gte.${inicioHoje.toISOString()},data.lt.${inicioAmanha.toISOString()})`)
         .order('data', { ascending: true });
 
     distribuirNasColunas(data || []);
@@ -137,13 +147,14 @@ function distribuirNasColunas(pedidos) {
     
     pedidos.forEach(p => {
         const card = criarCardHTML(p);
-        if (p.status === 'Novo') { 
+        const stage = getOrderBoardStage(p.status);
+        if (stage === 'new') {
             document.getElementById('lista-novos').appendChild(card); 
             contadores.novo++; 
-        } else if (p.status === 'Em Entrega' || p.status === 'Visto') { 
+        } else if (stage === 'active') {
             document.getElementById('lista-entrega').appendChild(card); 
             contadores.entrega++; 
-        } else if (p.status === 'Concluido') { 
+        } else if (stage === 'done') {
             document.getElementById('lista-concluidos').appendChild(card); 
             contadores.concluido++; 
         }
@@ -174,10 +185,21 @@ function criarCardHTML(p) {
     
     let botoesAcao = '';
     if (p.status === 'Novo') {
-        botoesAcao = `<button onclick="marcarComoEnviadoEAvisarCliente(${idArg})" class="btn-action btn-move-entrega">Enviar <i class="fas fa-motorcycle"></i></button>`;
+        const pedidoLegado = p.estoque_status === 'legado';
+        botoesAcao = `<button onclick="confirmarPedidoPreparacao(${idArg}, this, ${pedidoLegado})" class="btn-action btn-move-entrega">Confirmar preparo <i class="fas fa-utensils"></i></button>`;
+    } else if (p.status === 'Em Preparação') {
+        const entregaLabel = clienteDados.tipo === 'pickup' ? 'Pronto para retirada' : 'Enviar para entrega';
+        const entregaIcon = clienteDados.tipo === 'pickup' ? 'fa-store' : 'fa-motorcycle';
+        botoesAcao = `<button onclick="marcarComoEnviadoEAvisarCliente(${idArg}, this)" class="btn-action btn-move-entrega">${entregaLabel} <i class="fas ${entregaIcon}"></i></button>`;
     } else if (p.status === 'Em Entrega' || p.status === 'Visto') {
         botoesAcao = `<button onclick="mudarStatus(${idArg}, 'Concluido')" class="btn-action btn-move-concluido">Concluir <i class="fas fa-check"></i></button>`;
     }
+
+    const legacyStockWarning = p.status === 'Novo' && p.estoque_status === 'legado'
+        ? '<p class="order-stock-warning">Pedido anterior às reservas automáticas. Confira o estoque antes de confirmar.</p>'
+        : p.status === 'Novo' && p.estoque_status === 'reservado'
+            ? '<p class="order-stock-warning">Estoque reservado para este pedido até iniciar o preparo ou cancelá-lo.</p>'
+            : '';
 
     div.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:5px;">
@@ -196,7 +218,7 @@ function criarCardHTML(p) {
                 <button onclick="imprimirPedido(${idArg})" title="Imprimir" style="background:#eee; border:none; width:32px; height:32px; border-radius:50%; cursor:pointer; color:#333;">
                     <i class="fas fa-print"></i>
                 </button>
-                <button onclick="excluirPedido(${idArg})" title="Excluir Pedido" style="background:#ffebee; border:none; width:32px; height:32px; border-radius:50%; cursor:pointer; color:#c62828;">
+                <button onclick="excluirPedido(${idArg})" title="Cancelar pedido e liberar reserva" style="background:#ffebee; border:none; width:32px; height:32px; border-radius:50%; cursor:pointer; color:#c62828;">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
@@ -208,6 +230,7 @@ function criarCardHTML(p) {
         </div>
 
         <ul style="padding-left:20px; margin:5px 0; font-size:0.9em; color:#444">${itensHTML}</ul>
+        ${legacyStockWarning}
         
         <div style="margin-top:8px; font-weight:bold; text-align:right; font-size:1em; color:var(--dark)">
             R$ ${formatCurrencyBR(p.total)}
@@ -224,8 +247,61 @@ export async function mudarStatus(id, novoStatus) {
         return;
     }
 
-    await supabase.from('pedidos').update({ status: novoStatus }).eq('id', id);
-    carregarPedidosDoBanco();
+    let result;
+    try {
+        result = await transitionOrderStatus(supabase, id, novoStatus);
+    } catch {
+        result = { error: true };
+    }
+    if (result.error) {
+        alert('Não foi possível atualizar o pedido. Ele continua na etapa atual. Tente novamente.');
+        return;
+    }
+
+    agendarAtualizacaoPedidos();
+}
+
+export async function confirmarPedidoPreparacao(idPedido, button = null, pedidoLegado = false) {
+    if (LOCAL_TEST_MODE) {
+        showLocalMutationBlocked('Confirmacao/preparacao do pedido');
+        return;
+    }
+
+    if (pedidoLegado && !confirm('Este pedido já existia antes da baixa automática. Confira e ajuste o estoque manualmente antes de continuar. A confirmação não fará uma nova baixa automática. Deseja continuar?')) {
+        return;
+    }
+
+    if (button) {
+        button.disabled = true;
+        button.dataset.originalText = button.textContent;
+        button.textContent = 'Confirmando...';
+    }
+
+    try {
+        const { data, error } = await confirmOrderPreparation(supabase, idPedido, pedidoLegado);
+        if (error) {
+            if (button) {
+                button.disabled = false;
+                button.textContent = button.dataset.originalText || 'Confirmar preparo';
+            }
+            const message = error.code === 'P0001'
+                ? 'Estoque insuficiente para confirmar este pedido. Ele permanece em Novos; confira os saldos e tente novamente.'
+                : 'Não foi possível confirmar o pedido. Ele permanece em Novos; tente novamente.';
+            alert(message);
+            return;
+        }
+
+        if (data?.estoque_status === 'legado') {
+            alert('Pedido movido para preparação sem baixa automática. Confira o estoque manualmente.');
+        }
+        agendarAtualizacaoPedidos();
+    } catch {
+        if (button) {
+            button.disabled = false;
+            button.textContent = button.dataset.originalText || 'Confirmar preparo';
+        }
+        alert('Falha de comunicação ao confirmar o pedido. Ele permanece em Novos. Atualize o kanban antes de tentar novamente.');
+    }
 }
 
 export async function excluirPedido(id) {
@@ -234,21 +310,41 @@ export async function excluirPedido(id) {
         return;
     }
 
-    if(confirm("Tem certeza que deseja EXCLUIR este pedido? Essa ação não pode ser desfeita.")) {
-        const { error } = await supabase.from('pedidos').delete().eq('id', id);
-        if(error) alert("Erro ao excluir: " + error.message);
+    if(confirm("Remover este pedido? Se ele ainda estiver em Novos, será cancelado e a reserva será liberada. Pedidos antigos serão removidos do histórico.")) {
+        const { error } = await cancelOrderAndReleaseStock(supabase, id);
+        if(error) alert("Não foi possível cancelar o pedido: " + error.message);
         else carregarPedidosDoBanco();
     }
 }
 
-export async function marcarComoEnviadoEAvisarCliente(idPedido) {
+export async function marcarComoEnviadoEAvisarCliente(idPedido, button = null) {
     if (LOCAL_TEST_MODE) {
         showLocalMutationBlocked('Envio/alteracao de pedido');
         return;
     }
 
-    await supabase.from('pedidos').update({ status: 'Em Entrega' }).eq('id', idPedido);
-    carregarPedidosDoBanco(); 
+    if (button) {
+        button.disabled = true;
+        button.dataset.originalText = button.textContent;
+        button.textContent = 'Atualizando...';
+    }
+
+    let statusResult;
+    try {
+        statusResult = await transitionOrderStatus(supabase, idPedido, 'Em Entrega');
+    } catch {
+        statusResult = { error: true };
+    }
+    const statusError = statusResult.error;
+    if (statusError) {
+        if (button) {
+            button.disabled = false;
+            button.textContent = button.dataset.originalText || 'Enviar para entrega';
+        }
+        alert('Não foi possível enviar o pedido para entrega. Ele permanece na etapa atual.');
+        return;
+    }
+    agendarAtualizacaoPedidos();
 
     const { data: p, error } = await supabase.from('pedidos').select('*').eq('id', idPedido).single();
     if(error || !p) return;
@@ -483,6 +579,7 @@ export function imprimirPedido(idPedido) {
 
 // === EXPOSIÇÃO GLOBAL PARA OS BOTÕES DO HTML ===
 window.marcarComoEnviadoEAvisarCliente = marcarComoEnviadoEAvisarCliente;
+window.confirmarPedidoPreparacao = confirmarPedidoPreparacao;
 window.excluirPedido = excluirPedido;
 window.mudarStatus = mudarStatus;
 window.enviarWhatsAppEntregador = enviarWhatsAppEntregador;

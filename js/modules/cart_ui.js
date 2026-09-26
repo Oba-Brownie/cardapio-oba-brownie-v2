@@ -1,5 +1,6 @@
 /* Manipulação de Interface (DOM) do Carrinho */
 import { loadCart, addToCartLogic, updateQuantityLogic, removeFromCartLogic, getCart, calculateTotals } from './cart_service.js';
+import { calculateCartLinePricing } from './cart_pricing.js';
 import { escapeHTML, escapeAttribute, formatCurrencyBR, inlineJSString, safeNumber } from './utils.js';
 
 let taxaEntregaAtual = 0;
@@ -56,23 +57,7 @@ export function getCurrentCartValues() {
 }
 
 export function getCartLinePricing(subtotal = null) {
-    const cart = getCart();
-    const orderSubtotal = subtotal === null
-        ? cart.reduce((sum, item) => sum + (safeNumber(item.price) * safeNumber(item.quantity)), 0)
-        : subtotal;
-
-    return cart.map(item => {
-        const promotion = item.promotion;
-        const eligible = Boolean(promotion) && orderSubtotal >= safeNumber(promotion.valor_minimo);
-        const percentage = eligible ? safeNumber(promotion.desconto_percentual) : 0;
-        const unitPrice = Math.round(safeNumber(item.price) * (1 - percentage / 100) * 100) / 100;
-        return {
-            item,
-            unitPrice,
-            promotionApplied: eligible,
-            promotionDiscount: Math.max(0, safeNumber(item.price) - unitPrice) * safeNumber(item.quantity)
-        };
-    });
+    return calculateCartLinePricing(getCart(), subtotal);
 }
 
 // === EXPOSIÇÃO GLOBAL (Para o HTML) ===

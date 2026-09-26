@@ -49,6 +49,8 @@ window.toggleCategoriaAdmin = Products.toggleCategoriaAdmin;
 
 window.carregarPedidosDoBanco = Orders.carregarPedidosDoBanco;
 window.mudarStatus = Orders.mudarStatus;
+window.confirmarPedidoPreparacao = Orders.confirmarPedidoPreparacao;
+window.marcarComoEnviadoEAvisarCliente = Orders.marcarComoEnviadoEAvisarCliente;
 window.verDetalhesPedido = Orders.verDetalhesPedido;
 window.fecharModalDetalhes = Orders.fecharModalDetalhes;
 window.imprimirPedido = Orders.imprimirPedido;

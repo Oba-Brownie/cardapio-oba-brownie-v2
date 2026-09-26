@@ -61,10 +61,17 @@ export function addToCartLogic(product) {
             return { success: false, msg: "Estoque máximo atingido para este item!" };
         }
         existingItem.quantity += 1;
+        existingItem.name = product.name;
+        existingItem.price = parseFloat(product.price);
+        existingItem.image = product.image;
+        existingItem.estoque = product.estoque;
+        existingItem.categoria = product.categoria || 'Outros';
+        existingItem.promotion = product.promotion || null;
     } else {
         cart.push({
             id: idProduto, name: product.name, price: parseFloat(product.price),
-            image: product.image, estoque: product.estoque, categoria: product.categoria || 'Outros', quantity: 1
+            image: product.image, estoque: product.estoque, categoria: product.categoria || 'Outros',
+            promotion: product.promotion || null, quantity: 1
         });
     }
     saveCartMemory();

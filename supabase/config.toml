@@ -1,0 +1,4 @@
+project_id = "diyskqeunfunotqfmncq"
+
+[functions.criar-pedido]
+verify_jwt = false
