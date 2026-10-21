@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+    buildCustomerWhatsappInternalNotice,
     clearCheckoutRequestId,
+    createOnceOrderRegistrar,
     createOrderWithStockReservation,
     getOrCreateCheckoutRequestId,
     hasRequiredPickupObservation,
@@ -54,4 +56,23 @@ test('checkout sends order, idempotency key and challenge token through the serv
         'criar-pedido',
         { body: { pedido: order, request_id: 'request-123', turnstile_token: 'turnstile-token' } }
     ]]);
+});
+
+test('customer whatsapp notice omits stock reservation internal warning when order is registered', () => {
+    assert.equal(buildCustomerWhatsappInternalNotice(true), '');
+    assert.match(buildCustomerWhatsappInternalNotice(false), /pedido não confirmado no painel automaticamente/i);
+});
+
+test('once order registrar registers immediately on pix copy and does not duplicate on confirm', async () => {
+    let calls = 0;
+    const registrar = createOnceOrderRegistrar(async () => {
+        calls += 1;
+        return true;
+    });
+
+    assert.equal(registrar.isRegistered(), false);
+    assert.equal(await registrar.register(), true);
+    assert.equal(registrar.isRegistered(), true);
+    assert.equal(await registrar.register(), true);
+    assert.equal(calls, 1);
 });

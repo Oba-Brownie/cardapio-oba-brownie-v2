@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initCartUI();
 
     const config = await fetchConfiguracaoLoja();
-    window.chavePixLoja = config.chave_pix;
+    window.chavePixLoja = config.chavePix || config.chave_pix;
     
     let lojaForcadaFechada = false;
     if (config) {

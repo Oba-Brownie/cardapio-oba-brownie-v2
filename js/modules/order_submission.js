@@ -32,3 +32,37 @@ export function createOrderWithStockReservation(supabase, pedido, requestId, tur
         }
     });
 }
+
+export function buildCustomerWhatsappInternalNotice(pedidoRegistradoNoBanco) {
+    if (!pedidoRegistradoNoBanco) {
+        return '\n*ATENÇÃO INTERNA:* pedido não confirmado no painel automaticamente. Conferir manualmente.\n';
+    }
+    return '';
+}
+
+export function createOnceOrderRegistrar(registerFn) {
+    let registered = false;
+    let pendingPromise = null;
+
+    const register = async () => {
+        if (registered) return true;
+        if (pendingPromise) return pendingPromise;
+
+        pendingPromise = (async () => {
+            try {
+                const ok = Boolean(await registerFn());
+                if (ok) registered = true;
+                return ok;
+            } finally {
+                pendingPromise = null;
+            }
+        })();
+
+        return pendingPromise;
+    };
+
+    return {
+        register,
+        isRegistered: () => registered
+    };
+}
