@@ -39,27 +39,39 @@ export const DEFAULT_IMAGE_FALLBACK = 'images/placeholder-brownie.svg';
 const R2_BASE = 'https://pub-444a12cc8dff469ca364cebc0a29771b.r2.dev';
 
 export const RECOVERED_IMAGE_MAP = {
-    // Bordinhas de brownie
-    'produtos/doces/bordinhas-de-brownie': `${R2_BASE}/produtos/doces/bordinhas-de-brownie.webp`,
-    // Pão de mel doce de leite
-    'produtos/doces/pao-de-mel-doce-de-leite': `${R2_BASE}/produtos/doces/pao-de-mel-doce-de-leite.png`,
-    // Pão de mel brigadeiro
-    'produtos/doces/pao-de-mel-de-brigadeiro': `${R2_BASE}/produtos/doces/pao-de-mel-de-brigadeiro.png`,
-    // Brotinho Frango
-    'produtos/salgados/brotinho-frango': `${R2_BASE}/produtos/salgados/brotinho-frango.webp`,
-    // Brownie Tradicional
+    // Brownies
     'produtos/brownies/brownie-tradicional': `${R2_BASE}/produtos/brownies/brownie-tradicional.png`,
-    // Brownie Leite Ninho / Beijinho
     'produtos/brownies/brownie-leite-ninho': `${R2_BASE}/produtos/brownies/brownie-leite-ninho.png`,
-    // Mini Vulcão Cenoura
+    'produtos/brownies/brownie-ninho-com-nutella': `${R2_BASE}/produtos/brownies/brownie-ninho-com-nutella.webp`,
+    'produtos/brownies/brownie-de-brigadeiro': `${R2_BASE}/produtos/brownies/brownie-de-brigadeiro.png`,
+    'produtos/brownies/brownie-doce-de-leite': `${R2_BASE}/produtos/brownies/brownie-doce-de-leite.png`,
+    'produtos/brownies/brownie-nutella': `${R2_BASE}/produtos/brownies/brownie-nutella.png`,
+
+    // Bolos
     'produtos/bolos/mini-vulcao-cenoura-com-chocolate': `${R2_BASE}/produtos/bolos/mini-vulcao-cenoura-com-chocolate.png`,
-    // Cookie Ninhotella
+    'produtos/bolos/bolo-nuvem': `${R2_BASE}/produtos/bolos/bolo-nuvem.webp`,
+    'produtos/bolos/bolo-gelado-choconinho': `${R2_BASE}/produtos/bolos/bolo-gelado-choconinho.webp`,
+
+    // Doces
+    'produtos/doces/bordinhas-de-brownie': `${R2_BASE}/produtos/doces/bordinhas-de-brownie.webp`,
+    'produtos/doces/pao-de-mel-doce-de-leite': `${R2_BASE}/produtos/doces/pao-de-mel-doce-de-leite.png`,
+    'produtos/doces/pao-de-mel-de-brigadeiro': `${R2_BASE}/produtos/doces/pao-de-mel-de-brigadeiro.png`,
+    'produtos/doces/cone-trufado-ninho-com-nutella': `${R2_BASE}/produtos/doces/cone-trufado-ninho-com-nutella.png`,
+    'produtos/doces/cone-trufado-chocobrownie': `${R2_BASE}/produtos/doces/cone-trufado-chocobrownie.png`,
+
+    // Cookies
     'produtos/cookies/cookie-ninhotella': `${R2_BASE}/produtos/cookies/cookie-ninhotella.png`,
-    // Kit de salgados 15 unidades / Marmitinha
+
+    // Salgados
+    'produtos/salgados/brotinho-frango': `${R2_BASE}/produtos/salgados/brotinho-frango.webp`,
     'produtos/salgados/kit-de-salgados-15und': `${R2_BASE}/produtos/salgados/kit-de-salgados-15-unidades.png`,
+    'produtos/salgados/kit-de-salgadinhos-10-unidades': `${R2_BASE}/produtos/salgados/kit-de-salgadinhos-10-unidades.png`,
     'produtos/salgados/marmitinha-de-salgados': `${R2_BASE}/produtos/salgados/kit-de-salgados-15-unidades.png`,
-    // Risole de carne
     'produtos/salgados/risole-de-carne': `${R2_BASE}/produtos/salgados/risole-de-carne-20260925142326.png`,
+
+    // Acompanhamentos e Promoções
+    'produtos/acompanhamentos/ketchup-e-maionese': `${R2_BASE}/produtos/acompanhamentos/ketchup-e-maionese.webp`,
+    'produtos/promocoes/sua-foto-vale-um-brinde': `${R2_BASE}/produtos/promocoes/sua-foto-vale-um-brinde.webp`
 };
 
 export function resolveDisabledCloudinaryUrl(rawUrl, fallback = DEFAULT_IMAGE_FALLBACK) {

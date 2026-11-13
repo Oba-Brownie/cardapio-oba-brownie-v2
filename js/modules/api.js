@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase-config.js';
 import { LOCAL_TEST_MODE, getMockConfigLoja, getMockProductsPublic } from './local_test_mode.js';
+import { DEFAULT_IMAGE_FALLBACK } from './utils.js';
 
 // === CONFIGURAÇÕES DA LOJA ===
 export async function fetchConfiguracaoLoja() {
@@ -134,7 +135,7 @@ export async function fetchProducts(options = {}) {
                     desconto_percentual: Number(promotion.desconto_percentual),
                     valor_minimo: Number(promotion.valor_minimo) || 0
                 } : null,
-                image: item.imagem || 'https://placehold.co/400x400?text=Sem+Foto',
+                image: item.imagem || DEFAULT_IMAGE_FALLBACK,
                 categoria: category,
                 estoque: Math.max(0, Number(item.estoque || 0) - Number(item.estoque_reservado || 0)),
                 destaque: item.destaque || false,

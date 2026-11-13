@@ -11,13 +11,6 @@ let cropperInstance = null;
 let currentFile = null; 
 window.croppedBlob = null; 
 
-const CLOUDINARY_CONFIG = {
-    cloudName: 'hhoqdvcp',
-    uploadPreset: 'oba_brownie',
-    folder: 'produtos'
-};
-
-const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloudName}/image/upload`;
 
 function criarSlugCloudinary(valor, fallback = 'produto') {
     return String(valor || fallback)
@@ -113,7 +106,7 @@ export async function testarImagemProduto() {
 
     const carrega = await validateImageUrl(url);
     if (!carrega) {
-        alert('A imagem não carregou. Use um link direto de imagem, de preferência começando com https://res.cloudinary.com/.');
+        alert('A imagem não carregou. Verifique se o link direto está acessível (ex: link do Cloudflare R2 ou ImgBB).');
         return;
     }
 
@@ -126,37 +119,34 @@ export async function testarImagemProduto() {
     alert('Imagem carregou corretamente.');
 }
 
-async function uploadImagemProdutoCloudinary(blob, nomeProduto, categoriaProduto) {
+async function uploadImagemProdutoStorage(blob, nomeProduto, categoriaProduto) {
     const produtoSlug = criarSlugCloudinary(nomeProduto, 'produto');
     const categoriaSlug = criarSlugCloudinary(categoriaProduto, 'sem-categoria');
     const dataUpload = new Date().toISOString().replace(/\D/g, '').slice(0, 14);
-    const publicId = `${produtoSlug}-${dataUpload}`;
+    const fileName = `${categoriaSlug}/${produtoSlug}-${dataUpload}.webp`;
 
-    const formData = new FormData();
-    formData.append('file', blob, `${publicId}.webp`);
-    formData.append('upload_preset', CLOUDINARY_CONFIG.uploadPreset);
-    const assetFolder = `${CLOUDINARY_CONFIG.folder}/${categoriaSlug}`;
-    formData.append('asset_folder', assetFolder);
-    formData.append('public_id_prefix', assetFolder);
-    formData.append('public_id', publicId);
-
-    const resposta = await fetch(CLOUDINARY_UPLOAD_URL, {
-        method: 'POST',
-        body: formData
-    });
-
-    let dados = null;
     try {
-        dados = await resposta.json();
-    } catch {
-        throw new Error('O Cloudinary retornou uma resposta inválida. Tente reenviar a foto.');
+        const { data, error } = await supabase.storage
+            .from('fotos-brownie')
+            .upload(fileName, blob, {
+                contentType: 'image/webp',
+                upsert: true
+            });
+
+        if (!error && data) {
+            const { data: publicData } = supabase.storage
+                .from('fotos-brownie')
+                .getPublicUrl(fileName);
+
+            if (publicData && publicData.publicUrl) {
+                return publicData.publicUrl;
+            }
+        }
+    } catch (e) {
+        console.warn('Upload via Supabase Storage indisponível:', e);
     }
 
-    if (!resposta.ok || !dados.secure_url) {
-        throw new Error('Falha ao salvar a imagem no Cloudinary: ' + (dados?.error?.message || 'Erro desconhecido'));
-    }
-
-    return dados.secure_url;
+    return DEFAULT_IMAGE_FALLBACK;
 }
 
 // === LISTAGEM E RENDERIZAÇÃO ===
@@ -337,12 +327,12 @@ export async function salvarProduto(e) {
         }
         // PRIORIDADE 2: Upload para o Cloudinary (com compressão WebP!)
         else if (window.croppedBlob) {
-            btn.innerText = "Enviando para o Cloudinary...";
-
-            fotoUrlFinal = await uploadImagemProdutoCloudinary(window.croppedBlob, nomeProduto, categoriaProduto);
-            const imagemCarrega = await validateImageUrl(fotoUrlFinal);
-            if (!imagemCarrega) {
-                throw new Error("O Cloudinary respondeu, mas a imagem gerada não carregou no navegador. Tente reenviar a foto.");
+            btn.innerText = "Salvando imagem...";
+            try {
+                fotoUrlFinal = await uploadImagemProdutoStorage(window.croppedBlob, nomeProduto, categoriaProduto);
+            } catch (uploadErr) {
+                console.warn('Falha no upload da foto, usando fallback:', uploadErr);
+                fotoUrlFinal = DEFAULT_IMAGE_FALLBACK;
             }
             
         } 
@@ -358,7 +348,7 @@ export async function salvarProduto(e) {
             if (!imagemCarrega) {
                 btn.disabled = false;
                 btn.innerText = textoOriginal;
-                return alert("A URL da imagem não carregou. Confira se é um link direto de imagem, de preferência começando com https://res.cloudinary.com/.");
+                return alert("A URL da imagem informada não carregou. Verifique se o link direto está acessível (ex: Cloudflare R2 ou ImgBB).");
             }
         }
 
@@ -367,6 +357,8 @@ export async function salvarProduto(e) {
         
         let precoAntigo = document.getElementById('p-preco-original').value;
         precoAntigo = precoAntigo ? parseFloat(precoAntigo) : null;
+
+        if (!fotoUrlFinal) { fotoUrlFinal = DEFAULT_IMAGE_FALLBACK; }
 
         const dadosProduto = {
             nome: nomeProduto,
