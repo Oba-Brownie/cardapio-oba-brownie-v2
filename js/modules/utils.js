@@ -86,6 +86,8 @@ export function resolveDisabledCloudinaryUrl(rawUrl, fallback = DEFAULT_IMAGE_FA
     return fallback;
 }
 
+const SAFE_DATA_IMAGE_REGEX = /^data:image\/(webp|png|jpeg|jpg);base64,[A-Za-z0-9+/=]+$/i;
+
 export function sanitizeImageUrl(value, fallback = DEFAULT_IMAGE_FALLBACK) {
     const rawUrl = String(value ?? '').trim();
     if (!rawUrl) return fallback;
@@ -93,8 +95,14 @@ export function sanitizeImageUrl(value, fallback = DEFAULT_IMAGE_FALLBACK) {
     const resolvedUrl = resolveDisabledCloudinaryUrl(rawUrl, fallback);
     if (resolvedUrl === fallback) return fallback;
 
+    if (SAFE_DATA_IMAGE_REGEX.test(resolvedUrl)) {
+        return resolvedUrl;
+    }
+
     try {
-        const base = (typeof window !== 'undefined' && window.location) ? window.location.origin : 'http://localhost';
+        const base = (typeof window !== 'undefined' && window.location && window.location.href)
+            ? window.location.href
+            : 'http://localhost/';
         const parsed = new URL(resolvedUrl, base);
         if (parsed.protocol === 'http:' || parsed.protocol === 'https:' || parsed.protocol === 'blob:') {
             return parsed.href;

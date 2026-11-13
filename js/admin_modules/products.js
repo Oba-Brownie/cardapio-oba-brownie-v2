@@ -4,6 +4,7 @@
 /* ================================================= */
 
 import { supabase } from '../config/supabase-config.js';
+import { R2_CONFIG } from '../config/r2-config.js';
 import { attachImageFallbacks, DEFAULT_IMAGE_FALLBACK, escapeHTML, escapeAttribute, formatCurrencyBR, inlineJSString, safeNumber, sanitizeImageUrl, validateImageUrl } from '../modules/utils.js';
 import { LOCAL_TEST_MODE, getMockConfigLoja, getMockProductsAdmin, showLocalMutationBlocked } from '../modules/local_test_mode.js';
 
@@ -119,34 +120,122 @@ export async function testarImagemProduto() {
     alert('Imagem carregou corretamente.');
 }
 
+async function uploadImagemCloudflareWorker(blob, fileName) {
+    const workerUrl = (R2_CONFIG.uploadWorkerUrl || '').trim();
+    if (!workerUrl) return null;
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    const headers = {
+        'Content-Type': 'image/webp',
+        'X-File-Name': fileName
+    };
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(workerUrl, {
+        method: 'POST',
+        headers,
+        body: blob
+    });
+
+    if (!res.ok) {
+        throw new Error(`Worker R2 retornou HTTP ${res.status}`);
+    }
+
+    const payload = await res.json();
+    if (!payload?.url) {
+        throw new Error('Worker R2 não retornou a URL pública da imagem.');
+    }
+
+    return payload.url;
+}
+
+async function blobToCompactWebpDataUrl(blob, maxSide = 480, maxLength = 85000) {
+    const bitmapUrl = URL.createObjectURL(blob);
+    try {
+        const img = await new Promise((resolve, reject) => {
+            const el = new Image();
+            el.onload = () => resolve(el);
+            el.onerror = () => reject(new Error('Falha ao ler imagem recortada.'));
+            el.src = bitmapUrl;
+        });
+
+        const canvas = document.createElement('canvas');
+        const width = img.naturalWidth || img.width || maxSide;
+        const height = img.naturalHeight || img.height || maxSide;
+        const scale = Math.min(1, maxSide / Math.max(width, height));
+
+        canvas.width = Math.max(1, Math.round(width * scale));
+        canvas.height = Math.max(1, Math.round(height * scale));
+
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        for (const quality of [0.78, 0.65, 0.52, 0.4]) {
+            const dataUrl = canvas.toDataURL('image/webp', quality);
+            if (dataUrl.startsWith('data:image/webp;base64,') && dataUrl.length <= maxLength) {
+                return dataUrl;
+            }
+        }
+
+        const jpegFallback = canvas.toDataURL('image/jpeg', 0.6);
+        if (jpegFallback.startsWith('data:image/jpeg;base64,')) {
+            return jpegFallback;
+        }
+
+        throw new Error('Imagem recortada excedeu o tamanho suportado.');
+    } finally {
+        URL.revokeObjectURL(bitmapUrl);
+    }
+}
+
 async function uploadImagemProdutoStorage(blob, nomeProduto, categoriaProduto) {
     const produtoSlug = criarSlugCloudinary(nomeProduto, 'produto');
     const categoriaSlug = criarSlugCloudinary(categoriaProduto, 'sem-categoria');
     const dataUpload = new Date().toISOString().replace(/\D/g, '').slice(0, 14);
     const fileName = `${categoriaSlug}/${produtoSlug}-${dataUpload}.webp`;
 
-    const { data, error } = await supabase.storage
-        .from('fotos-brownie')
-        .upload(fileName, blob, {
-            contentType: 'image/webp',
-            upsert: true
-        });
-
-    if (error) {
-        throw new Error(error.message || 'Bucket não encontrado ou sem permissão de escrita');
-    }
-
-    if (data) {
-        const { data: publicData } = supabase.storage
-            .from('fotos-brownie')
-            .getPublicUrl(fileName);
-
-        if (publicData && publicData.publicUrl) {
-            return publicData.publicUrl;
+    // 1. Tenta enviar via Cloudflare Worker para o R2 (se configurado)
+    if (R2_CONFIG.uploadWorkerUrl) {
+        try {
+            const r2Url = await uploadImagemCloudflareWorker(blob, fileName);
+            if (r2Url) return r2Url;
+        } catch (workerErr) {
+            console.warn('Worker R2 falhou, tentando Supabase Storage:', workerErr);
         }
     }
 
-    throw new Error('Não foi possível obter a URL pública da foto');
+    // 2. Tenta enviar para o Supabase Storage (bucket 'fotos-brownie')
+    try {
+        const { data, error } = await supabase.storage
+            .from('fotos-brownie')
+            .upload(fileName, blob, {
+                contentType: 'image/webp',
+                upsert: true
+            });
+
+        if (!error && data) {
+            const { data: publicData } = supabase.storage
+                .from('fotos-brownie')
+                .getPublicUrl(fileName);
+
+            if (publicData && publicData.publicUrl) {
+                return publicData.publicUrl;
+            }
+        } else if (error) {
+            console.warn('Supabase Storage indisponível:', error.message);
+        }
+    } catch (storageErr) {
+        console.warn('Erro ao enviar para Supabase Storage:', storageErr);
+    }
+
+    // 3. Fallback automático: salva foto otimizada em WebP compacto diretamente no produto
+    // Garante que o cadastro funcione imediatamente mesmo sem bucket externo configurado.
+    return await blobToCompactWebpDataUrl(blob);
 }
 
 // === LISTAGEM E RENDERIZAÇÃO ===
@@ -325,18 +414,15 @@ export async function salvarProduto(e) {
         if (imagemColadaManual) {
             fotoUrlFinal = urlInput.value.trim();
         }
-        // PRIORIDADE 2: Upload para o Supabase Storage (com compressão WebP!)
+        // PRIORIDADE 2: Upload para Storage/R2 ou compactação WebP automática
         else if (window.croppedBlob) {
-            btn.innerText = "Enviando foto...";
+            btn.innerText = "Processando foto...";
             try {
                 fotoUrlFinal = await uploadImagemProdutoStorage(window.croppedBlob, nomeProduto, categoriaProduto);
             } catch (uploadErr) {
                 btn.disabled = false;
                 btn.innerText = textoOriginal;
-                return alert(
-                    "Não foi possível salvar a foto no Supabase Storage: " + uploadErr.message +
-                    "\n\nCertifique-se de executar a migration do bucket 'fotos-brownie' no Supabase ou use a Opção 2 informando o link direto da imagem."
-                );
+                return alert("Não foi possível processar a foto do produto: " + uploadErr.message);
             }
         } 
         // TRATAMENTO DE ERRO: Se ela escolheu um arquivo mas não cortou
@@ -500,7 +586,7 @@ function prepararItensGaleria(produtos) {
     return produtos
         .map(produto => {
             const url = sanitizeImageUrl(produto.imagem, '');
-            if (!url || !url.startsWith('http')) return null;
+            if (!url || (!url.startsWith('http') && !url.startsWith('data:image/'))) return null;
 
             return {
                 id: produto.id,
@@ -516,8 +602,10 @@ function prepararItensGaleria(produtos) {
 
 function getOrigemImagem(url) {
     if (url.includes('r2.dev') || url.includes('cloudflarestorage.com')) return 'cloudflare';
+    if (url.includes('supabase.co/storage')) return 'supabase';
     if (url.includes('res.cloudinary.com')) return 'cloudinary';
     if (url.includes('i.ibb.co')) return 'legado';
+    if (url.startsWith('data:image/')) return 'compacta';
     return 'externa';
 }
 

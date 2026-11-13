@@ -11,7 +11,11 @@ export const R2_CONFIG = {
     // URL Pública para leitura direta pelas tags <img> dos clientes.
     // Pode ser o R2.dev Subdomain público (ex: https://pub-xxxxxx.r2.dev)
     // ou um Custom Domain conectado na Cloudflare (ex: https://fotos.obabrownie.com.br).
-    publicBaseUrl: 'https://pub-444a12cc8dff469ca364cebc0a29771b.r2.dev'
+    publicBaseUrl: 'https://pub-444a12cc8dff469ca364cebc0a29771b.r2.dev',
+
+    // URL opcional de um Cloudflare Worker responsável por receber uploads do painel admin
+    // e gravar no bucket 'oba-brownie-fotos' com segurança (ex: https://oba-r2-upload.seu-subdominio.workers.dev).
+    uploadWorkerUrl: ''
 };
 
 /**
