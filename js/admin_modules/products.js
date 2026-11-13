@@ -125,28 +125,28 @@ async function uploadImagemProdutoStorage(blob, nomeProduto, categoriaProduto) {
     const dataUpload = new Date().toISOString().replace(/\D/g, '').slice(0, 14);
     const fileName = `${categoriaSlug}/${produtoSlug}-${dataUpload}.webp`;
 
-    try {
-        const { data, error } = await supabase.storage
-            .from('fotos-brownie')
-            .upload(fileName, blob, {
-                contentType: 'image/webp',
-                upsert: true
-            });
+    const { data, error } = await supabase.storage
+        .from('fotos-brownie')
+        .upload(fileName, blob, {
+            contentType: 'image/webp',
+            upsert: true
+        });
 
-        if (!error && data) {
-            const { data: publicData } = supabase.storage
-                .from('fotos-brownie')
-                .getPublicUrl(fileName);
-
-            if (publicData && publicData.publicUrl) {
-                return publicData.publicUrl;
-            }
-        }
-    } catch (e) {
-        console.warn('Upload via Supabase Storage indisponível:', e);
+    if (error) {
+        throw new Error(error.message || 'Bucket não encontrado ou sem permissão de escrita');
     }
 
-    return DEFAULT_IMAGE_FALLBACK;
+    if (data) {
+        const { data: publicData } = supabase.storage
+            .from('fotos-brownie')
+            .getPublicUrl(fileName);
+
+        if (publicData && publicData.publicUrl) {
+            return publicData.publicUrl;
+        }
+    }
+
+    throw new Error('Não foi possível obter a URL pública da foto');
 }
 
 // === LISTAGEM E RENDERIZAÇÃO ===
@@ -325,16 +325,19 @@ export async function salvarProduto(e) {
         if (imagemColadaManual) {
             fotoUrlFinal = urlInput.value.trim();
         }
-        // PRIORIDADE 2: Upload para o Cloudinary (com compressão WebP!)
+        // PRIORIDADE 2: Upload para o Supabase Storage (com compressão WebP!)
         else if (window.croppedBlob) {
-            btn.innerText = "Salvando imagem...";
+            btn.innerText = "Enviando foto...";
             try {
                 fotoUrlFinal = await uploadImagemProdutoStorage(window.croppedBlob, nomeProduto, categoriaProduto);
             } catch (uploadErr) {
-                console.warn('Falha no upload da foto, usando fallback:', uploadErr);
-                fotoUrlFinal = DEFAULT_IMAGE_FALLBACK;
+                btn.disabled = false;
+                btn.innerText = textoOriginal;
+                return alert(
+                    "Não foi possível salvar a foto no Supabase Storage: " + uploadErr.message +
+                    "\n\nCertifique-se de executar a migration do bucket 'fotos-brownie' no Supabase ou use a Opção 2 informando o link direto da imagem."
+                );
             }
-            
         } 
         // TRATAMENTO DE ERRO: Se ela escolheu um arquivo mas não cortou
         else if (fotoInput && fotoInput.files.length > 0) {
