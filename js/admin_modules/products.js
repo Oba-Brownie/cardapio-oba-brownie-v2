@@ -520,6 +520,7 @@ function prepararItensGaleria(produtos) {
 }
 
 function getOrigemImagem(url) {
+    if (url.includes('r2.dev') || url.includes('cloudflarestorage.com')) return 'cloudflare';
     if (url.includes('res.cloudinary.com')) return 'cloudinary';
     if (url.includes('i.ibb.co')) return 'legado';
     return 'externa';
@@ -597,7 +598,7 @@ function renderizarGaleriaProdutos() {
         card.className = `galeria-card ${item.ativo ? 'is-active' : 'is-inactive'}`;
         card.tabIndex = 0;
 
-        const origemLabel = item.origem === 'cloudinary' ? 'Cloudinary' : item.origem === 'legado' ? 'Link antigo' : 'Link externo';
+        const origemLabel = item.origem === 'cloudflare' ? 'Cloudflare R2' : item.origem === 'cloudinary' ? 'Cloudinary' : item.origem === 'legado' ? 'Link antigo' : 'Link externo';
         const statusLabel = item.ativo ? 'Ativo' : 'Desativado';
         const productName = escapeHTML(item.nome);
         const productCategory = escapeHTML(item.categoria);

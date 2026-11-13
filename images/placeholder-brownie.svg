@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff5f8"/>
+      <stop offset="100%" stop-color="#ffe4ed"/>
+    </linearGradient>
+    <linearGradient id="brownie" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5a2e1d"/>
+      <stop offset="100%" stop-color="#3b1d12"/>
+    </linearGradient>
+    <linearGradient id="calda" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f45eaa"/>
+      <stop offset="100%" stop-color="#b33b70"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Fundo com cantos arredondados -->
+  <rect width="400" height="400" fill="url(#bg)"/>
+  <rect x="8" y="8" width="384" height="384" rx="24" fill="none" stroke="#f2b7cc" stroke-width="2" stroke-dasharray="6,6"/>
+  
+  <!-- Ícone Brownie / Doce -->
+  <g transform="translate(100, 90)">
+    <!-- Fatia de Brownie -->
+    <rect x="30" y="50" width="140" height="90" rx="16" fill="url(#brownie)" />
+    <!-- Textura do Brownie / Crosta -->
+    <rect x="30" y="50" width="140" height="20" rx="10" fill="#6d3925" />
+    <!-- Gotas de calda rosa -->
+    <path d="M 30 70 Q 45 95 60 70 Q 75 105 90 70 Q 110 110 130 70 Q 150 95 170 70 L 170 50 L 30 50 Z" fill="url(#calda)"/>
+    <!-- Brilhos / Confeitos -->
+    <circle cx="65" cy="105" r="4" fill="#f7d5df"/>
+    <circle cx="100" cy="115" r="5" fill="#f45eaa"/>
+    <circle cx="135" cy="100" r="4" fill="#f7d5df"/>
+    <!-- Coração flutuando -->
+    <path d="M 100 25 C 100 15, 85 10, 85 22 C 85 32, 100 42, 100 42 C 100 42, 115 32, 115 22 C 115 10, 100 15, 100 25 Z" fill="#f45eaa"/>
+  </g>
+  
+  <!-- Tipografia -->
+  <text x="200" y="275" font-family="'Nunito', -apple-system, sans-serif" font-weight="800" font-size="24" fill="#8f2f59" text-anchor="middle" letter-spacing="1">
+    Oba Brownie ✨
+  </text>
+  <text x="200" y="305" font-family="'Nunito', -apple-system, sans-serif" font-weight="600" font-size="15" fill="#a07082" text-anchor="middle">
+    Foto em atualização
+  </text>
+</svg>

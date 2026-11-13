@@ -3,7 +3,11 @@
 /* Variáveis globais e configurações estáticas       */
 /* ================================================= */
 
-export const IS_BLACK_FRIDAY = window.location.pathname.includes('blackfriday') || window.location.href.includes('blackfriday');
+const hasWindow = typeof window !== 'undefined' && Boolean(window.location);
+export const IS_BLACK_FRIDAY = hasWindow && (
+    (window.location.pathname && window.location.pathname.includes('blackfriday')) ||
+    (window.location.href && window.location.href.includes('blackfriday'))
+);
 
 export const DADOS_LOJA = {
     nome: "Oba Brownie",

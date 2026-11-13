@@ -1,4 +1,4 @@
-const CACHE_NAME = 'oba-brownie-imagens-v4';
+const CACHE_NAME = 'oba-brownie-imagens-v5';
 
 function isCacheableImageRequest(event, url) {
     if (event.request.method !== 'GET') return false;
@@ -6,11 +6,12 @@ function isCacheableImageRequest(event, url) {
     const isImageRequest = event.request.destination === 'image';
     const isImgBBImage = url.hostname === 'i.ibb.co' && isImageRequest;
     const isCloudinaryImage = url.hostname === 'res.cloudinary.com' && isImageRequest;
+    const isR2Image = (url.hostname.endsWith('.r2.dev') || url.hostname.endsWith('.cloudflarestorage.com')) && isImageRequest;
     const isSupabaseStorageImage = url.hostname.endsWith('.supabase.co')
         && url.pathname.includes('/storage/v1/object/')
         && isImageRequest;
 
-    return isImgBBImage || isCloudinaryImage || isSupabaseStorageImage;
+    return isImgBBImage || isCloudinaryImage || isR2Image || isSupabaseStorageImage;
 }
 
 self.addEventListener('install', (event) => {
